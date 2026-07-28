@@ -1,0 +1,13 @@
+language: "ko-KR" # 리뷰 언어를 한국어로 설정
+
+reviews:
+  profile: "chill" # chill(친절/요약 위주) 또는 assertive(엄격/상세 검토)
+  auto_review:
+    enabled: true # PR이 열릴 때 자동으로 리뷰 작성
+    drafts: false # Draft PR은 리뷰 대상에서 제외
+  path_filters:
+    - "!**/build/**" # 빌드 디렉토리 제외 예시
+    - "!**/dist/**"
+
+chat:
+  auto_reply: true # 코멘트로 질의응답 가능하도록 설정
