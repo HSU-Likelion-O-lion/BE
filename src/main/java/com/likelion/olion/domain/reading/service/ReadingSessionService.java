@@ -12,6 +12,7 @@ import com.likelion.olion.domain.reading.dto.ReadingSessionCompleteResponse;
 import com.likelion.olion.domain.reading.dto.ReadingSessionAbandonResponse;
 import com.likelion.olion.domain.reading.dto.ReadingInterruptionRequest;
 import com.likelion.olion.domain.reading.dto.ReadingInterruptionResponse;
+import com.likelion.olion.domain.reading.dto.ReadingStatisticsResponse;
 import com.likelion.olion.domain.reading.entity.ReadingSession;
 import com.likelion.olion.domain.reading.entity.ReadingInterruption;
 import com.likelion.olion.domain.reading.entity.ReadingInterruptionReason;
@@ -27,6 +28,12 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Set;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.time.DayOfWeek;
+import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
 @Service
 @Transactional(readOnly = true)
@@ -165,6 +172,35 @@ public class ReadingSessionService {
         ReadingSession session = readingSessionRepository.findBySessionIdAndUserId(sessionId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
         readingSessionRepository.delete(session);
+    }
+
+    public ReadingStatisticsResponse getStatistics(Long userId) {
+        List<ReadingInterruption> interruptions = readingInterruptionRepository.findBySessionUserId(userId);
+        int continueCount = (int) interruptions.stream()
+                .filter(interruption -> interruption.getReason() == ReadingInterruptionReason.CONTINUE)
+                .count();
+        int ebookSwitchCount = (int) interruptions.stream()
+                .filter(interruption -> interruption.getReason() == ReadingInterruptionReason.EBOOK_SWITCH)
+                .count();
+
+        Map<DayOfWeek, Integer> weekdayMinutes = new EnumMap<>(DayOfWeek.class);
+        Map<Integer, Integer> hourMinutes = new TreeMap<>();
+        readingSessionRepository.findByUserIdAndStatus(userId, ReadingSessionStatus.COMPLETED)
+                .forEach(session -> {
+                    int minutes = session.getTargetMinutes();
+                    DayOfWeek weekday = session.getStartedAt().atZone(java.time.ZoneId.systemDefault()).getDayOfWeek();
+                    int hour = session.getStartedAt().atZone(java.time.ZoneId.systemDefault()).getHour();
+                    weekdayMinutes.merge(weekday, minutes, Integer::sum);
+                    hourMinutes.merge(hour, minutes, Integer::sum);
+                });
+
+        List<ReadingStatisticsResponse.WeekdayStat> byWeekday = new ArrayList<>();
+        weekdayMinutes.forEach((weekday, minutes) ->
+                byWeekday.add(new ReadingStatisticsResponse.WeekdayStat(weekday.name(), minutes)));
+        List<ReadingStatisticsResponse.HourStat> byHour = hourMinutes.entrySet().stream()
+                .map(entry -> new ReadingStatisticsResponse.HourStat(entry.getKey(), entry.getValue()))
+                .toList();
+        return new ReadingStatisticsResponse(continueCount, ebookSwitchCount, byWeekday, byHour);
     }
 
     private int calculateRemainingSeconds(ReadingSession session) {

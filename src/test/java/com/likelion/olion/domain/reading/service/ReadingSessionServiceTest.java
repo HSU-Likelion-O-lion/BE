@@ -15,6 +15,8 @@ import com.likelion.olion.domain.reading.dto.ReadingInterruptionRequest;
 import com.likelion.olion.domain.reading.dto.ReadingInterruptionResponse;
 import com.likelion.olion.domain.reading.entity.ReadingSession;
 import com.likelion.olion.domain.reading.entity.ReadingSessionStatus;
+import com.likelion.olion.domain.reading.entity.ReadingInterruption;
+import com.likelion.olion.domain.reading.entity.ReadingInterruptionReason;
 import com.likelion.olion.domain.reading.repository.ReadingSessionRepository;
 import com.likelion.olion.domain.reading.repository.ReadingInterruptionRepository;
 import com.likelion.olion.global.common.exception.BusinessException;
@@ -24,6 +26,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -261,5 +264,29 @@ class ReadingSessionServiceTest {
 
         assertThatThrownBy(() -> service.deleteRecoverySession(1L, 100L))
                 .isInstanceOf(BusinessException.class);
+    }
+
+    @Test
+    void aggregatesReadingStatistics() {
+        ReadingSessionService service = new ReadingSessionService(
+                readingSessionRepository, readingInterruptionRepository, userBookRepository);
+        ReadingSession completedSession = new ReadingSession(1L, new UserBook(1L, book), 30);
+        completedSession.complete("Question");
+        ReadingSession interruptionSession = new ReadingSession(1L, new UserBook(1L, book), 15);
+        given(readingSessionRepository.findByUserIdAndStatus(1L, ReadingSessionStatus.COMPLETED))
+                .willReturn(List.of(completedSession));
+        given(readingInterruptionRepository.findBySessionUserId(1L)).willReturn(List.of(
+                new ReadingInterruption(interruptionSession, ReadingInterruptionReason.CONTINUE,
+                        null, java.time.Instant.now()),
+                new ReadingInterruption(interruptionSession, ReadingInterruptionReason.EBOOK_SWITCH,
+                        null, java.time.Instant.now())));
+
+        var response = service.getStatistics(1L);
+
+        assertThat(response.continueCount()).isEqualTo(1);
+        assertThat(response.ebookSwitchCount()).isEqualTo(1);
+        assertThat(response.byWeekday()).hasSize(1);
+        assertThat(response.byHour()).hasSize(1);
+        assertThat(response.byWeekday().get(0).focusedMinutes()).isEqualTo(30);
     }
 }
