@@ -9,6 +9,7 @@ import com.likelion.olion.domain.reading.dto.ReadingSessionHeartbeatRequest;
 import com.likelion.olion.domain.reading.dto.ReadingSessionHeartbeatResponse;
 import com.likelion.olion.domain.reading.dto.ReadingSessionResumeResponse;
 import com.likelion.olion.domain.reading.dto.ReadingSessionCompleteResponse;
+import com.likelion.olion.domain.reading.dto.ReadingSessionAbandonResponse;
 import com.likelion.olion.domain.reading.entity.ReadingSession;
 import com.likelion.olion.domain.reading.entity.ReadingSessionStatus;
 import com.likelion.olion.domain.reading.repository.ReadingSessionRepository;
@@ -108,6 +109,19 @@ public class ReadingSessionService {
 
         session.complete(DEFAULT_AI_QUESTION);
         return new ReadingSessionCompleteResponse(session.getStatus().name(), session.getAiQuestion());
+    }
+
+    @Transactional
+    public ReadingSessionAbandonResponse abandon(Long userId, Long sessionId) {
+        ReadingSession session = readingSessionRepository.findBySessionIdAndUserId(sessionId, userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+
+        if (session.getStatus() != ReadingSessionStatus.IN_PROGRESS) {
+            throw new BusinessException(ErrorCode.CONFLICT);
+        }
+
+        session.abandon();
+        return new ReadingSessionAbandonResponse(session.getStatus().name());
     }
 
     private int calculateRemainingSeconds(ReadingSession session) {

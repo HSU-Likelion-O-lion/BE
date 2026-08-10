@@ -7,6 +7,7 @@ import com.likelion.olion.domain.reading.dto.ReadingSessionHeartbeatRequest;
 import com.likelion.olion.domain.reading.dto.ReadingSessionHeartbeatResponse;
 import com.likelion.olion.domain.reading.dto.ReadingSessionResumeResponse;
 import com.likelion.olion.domain.reading.dto.ReadingSessionCompleteResponse;
+import com.likelion.olion.domain.reading.dto.ReadingSessionAbandonResponse;
 import com.likelion.olion.domain.reading.service.ReadingSessionService;
 import com.likelion.olion.global.common.response.ApiResponse;
 import jakarta.validation.Valid;
@@ -94,5 +95,17 @@ public class ReadingSessionController {
         return ResponseEntity.ok(ApiResponse.success(
                 "목표를 달성했습니다.",
                 readingSessionService.complete(Long.valueOf(principal.getName()), sessionId)));
+    }
+
+    @PatchMapping("/{sessionId}/abandon")
+    @Operation(summary = "독서 세션 강제 종료", description = "목표 시간 도달 전에 사용자가 독서 세션을 직접 종료합니다.")
+    public ResponseEntity<ApiResponse<ReadingSessionAbandonResponse>> abandon(
+            Principal principal,
+            @Parameter(description = "독서 세션 ID", example = "100")
+            @PathVariable Long sessionId
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "세션이 종료되었습니다.",
+                readingSessionService.abandon(Long.valueOf(principal.getName()), sessionId)));
     }
 }
