@@ -160,6 +160,13 @@ public class ReadingSessionService {
         return new ReadingInterruptionResponse(interruption.getInterruptionId());
     }
 
+    @Transactional
+    public void deleteRecoverySession(Long userId, Long sessionId) {
+        ReadingSession session = readingSessionRepository.findBySessionIdAndUserId(sessionId, userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+        readingSessionRepository.delete(session);
+    }
+
     private int calculateRemainingSeconds(ReadingSession session) {
         long elapsedSeconds = Math.max(0,
                 session.getStartedAt().until(Instant.now(), ChronoUnit.SECONDS));

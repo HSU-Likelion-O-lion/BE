@@ -238,4 +238,28 @@ class ReadingSessionServiceTest {
                         "OTHER", "", java.time.Instant.now())))
                 .isInstanceOf(BusinessException.class);
     }
+
+    @Test
+    void deletesRecoverySessionOwnedByUser() {
+        ReadingSessionService service = new ReadingSessionService(
+                readingSessionRepository, readingInterruptionRepository, userBookRepository);
+        ReadingSession session = new ReadingSession(1L, new UserBook(1L, book), 30);
+        given(readingSessionRepository.findBySessionIdAndUserId(100L, 1L))
+                .willReturn(Optional.of(session));
+
+        service.deleteRecoverySession(1L, 100L);
+
+        verify(readingSessionRepository).delete(session);
+    }
+
+    @Test
+    void rejectsDeletingMissingRecoverySession() {
+        ReadingSessionService service = new ReadingSessionService(
+                readingSessionRepository, readingInterruptionRepository, userBookRepository);
+        given(readingSessionRepository.findBySessionIdAndUserId(100L, 1L))
+                .willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.deleteRecoverySession(1L, 100L))
+                .isInstanceOf(BusinessException.class);
+    }
 }
