@@ -10,12 +10,18 @@ import com.likelion.olion.domain.reading.dto.ReadingSessionHeartbeatResponse;
 import com.likelion.olion.domain.reading.dto.ReadingSessionResumeResponse;
 import com.likelion.olion.domain.reading.dto.ReadingSessionCompleteResponse;
 import com.likelion.olion.domain.reading.dto.ReadingSessionAbandonResponse;
+import com.likelion.olion.domain.reading.dto.ReadingInterruptionRequest;
+import com.likelion.olion.domain.reading.dto.ReadingInterruptionResponse;
 import com.likelion.olion.domain.reading.entity.ReadingSession;
+import com.likelion.olion.domain.reading.entity.ReadingInterruption;
+import com.likelion.olion.domain.reading.entity.ReadingInterruptionReason;
 import com.likelion.olion.domain.reading.entity.ReadingSessionStatus;
+import com.likelion.olion.domain.reading.repository.ReadingInterruptionRepository;
 import com.likelion.olion.domain.reading.repository.ReadingSessionRepository;
 import com.likelion.olion.global.common.exception.BusinessException;
 import com.likelion.olion.global.common.exception.ErrorCode;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Set;
@@ -30,14 +36,25 @@ public class ReadingSessionService {
     private static final String DEFAULT_AI_QUESTION = "오늘 읽은 부분에서 가장 마음에 남는 문장은?";
 
     private final ReadingSessionRepository readingSessionRepository;
+    private final ReadingInterruptionRepository readingInterruptionRepository;
     private final UserBookRepository userBookRepository;
+
+    @Autowired
+    public ReadingSessionService(
+            ReadingSessionRepository readingSessionRepository,
+            ReadingInterruptionRepository readingInterruptionRepository,
+            UserBookRepository userBookRepository
+    ) {
+        this.readingSessionRepository = readingSessionRepository;
+        this.readingInterruptionRepository = readingInterruptionRepository;
+        this.userBookRepository = userBookRepository;
+    }
 
     public ReadingSessionService(
             ReadingSessionRepository readingSessionRepository,
             UserBookRepository userBookRepository
     ) {
-        this.readingSessionRepository = readingSessionRepository;
-        this.userBookRepository = userBookRepository;
+        this(readingSessionRepository, null, userBookRepository);
     }
 
     @Transactional
@@ -122,6 +139,25 @@ public class ReadingSessionService {
 
         session.abandon();
         return new ReadingSessionAbandonResponse(session.getStatus().name());
+    }
+
+    @Transactional
+    public ReadingInterruptionResponse recordInterruption(
+            Long userId,
+            Long sessionId,
+            ReadingInterruptionRequest request
+    ) {
+        ReadingSession session = readingSessionRepository.findBySessionIdAndUserId(sessionId, userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+        ReadingInterruptionReason reason = request.parsedReason();
+        if (reason == null || (reason == ReadingInterruptionReason.OTHER
+                && (request.customText() == null || request.customText().isBlank()))) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT);
+        }
+
+        ReadingInterruption interruption = readingInterruptionRepository.save(
+                new ReadingInterruption(session, reason, request.customText(), request.occurredAt()));
+        return new ReadingInterruptionResponse(interruption.getInterruptionId());
     }
 
     private int calculateRemainingSeconds(ReadingSession session) {
