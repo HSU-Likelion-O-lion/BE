@@ -3,22 +3,29 @@ package com.likelion.olion.domain.community.service;
 import com.likelion.olion.domain.book.entity.Book;
 import com.likelion.olion.domain.bookshelf.entity.UserBook;
 import com.likelion.olion.domain.bookshelf.repository.UserBookRepository;
+import com.likelion.olion.domain.community.dto.CommunityPostCreateRequest;
+import com.likelion.olion.domain.community.dto.CommunityPostCreateResponse;
 import com.likelion.olion.domain.community.dto.CommunityPostPreviewResponse;
 import com.likelion.olion.domain.community.dto.CommunityPostListResponse;
 import com.likelion.olion.domain.community.entity.CommunityPost;
 import com.likelion.olion.domain.community.repository.CommunityPostRepository;
 import com.likelion.olion.global.common.exception.BusinessException;
+import com.likelion.olion.global.common.exception.ErrorCode;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.ArgumentCaptor;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class CommunityPostServiceTest {
@@ -32,12 +39,15 @@ class CommunityPostServiceTest {
     private CommunityPostRepository communityPostRepository;
 
     @Mock
+    private CommunityPostPolicy communityPostPolicy;
+
+    @Mock
     private Book book;
 
     @Test
     void returnsFirstLinePreviews() {
         CommunityPostService service = new CommunityPostService(
-                communityAccessChecker, userBookRepository, communityPostRepository);
+                communityAccessChecker, userBookRepository, communityPostRepository, communityPostPolicy);
         given(communityAccessChecker.canEnter(1L)).willReturn(true);
         given(userBookRepository.findByUserBookIdAndUserId(12L, 1L))
                 .willReturn(Optional.of(new UserBook(1L, book)));
@@ -53,7 +63,7 @@ class CommunityPostServiceTest {
     @Test
     void deniesPreviewWhenUserCannotEnter() {
         CommunityPostService service = new CommunityPostService(
-                communityAccessChecker, userBookRepository, communityPostRepository);
+                communityAccessChecker, userBookRepository, communityPostRepository, communityPostPolicy);
         given(communityAccessChecker.canEnter(1L)).willReturn(false);
 
         assertThatThrownBy(() -> service.getPreviews(1L, 12L))
@@ -63,7 +73,7 @@ class CommunityPostServiceTest {
     @Test
     void returnsPostsWithMineAndHeartDefaults() {
         CommunityPostService service = new CommunityPostService(
-                communityAccessChecker, userBookRepository, communityPostRepository);
+                communityAccessChecker, userBookRepository, communityPostRepository, communityPostPolicy);
         given(communityAccessChecker.canEnter(1L)).willReturn(true);
         given(userBookRepository.findByUserBookIdAndUserId(12L, 1L))
                 .willReturn(Optional.of(new UserBook(1L, book)));
@@ -79,5 +89,70 @@ class CommunityPostServiceTest {
         assertThat(response.posts().get(1).isMine()).isFalse();
         assertThat(response.posts().get(1).heartCount()).isNull();
         assertThat(response.posts().get(1).isHearted()).isFalse();
+    }
+
+    @Test
+    void createsAnonymousPost() {
+        CommunityPostService service = new CommunityPostService(
+                communityAccessChecker, userBookRepository, communityPostRepository, communityPostPolicy);
+        given(communityAccessChecker.canEnter(1L)).willReturn(true);
+        given(userBookRepository.findByUserBookIdAndUserId(12L, 1L))
+                .willReturn(Optional.of(new UserBook(1L, book)));
+        given(communityPostRepository.countByUserIdAndCreatedAtAfter(any(), any(Instant.class)))
+                .willReturn(0L);
+        given(communityPostPolicy.createAnonymousNickname(1L, 12L)).willReturn("고요한 파도");
+        given(communityPostRepository.save(any(CommunityPost.class)))
+                .willAnswer(invocation -> invocation.getArgument(0));
+
+        CommunityPostCreateResponse response = service.createPost(
+                1L, new CommunityPostCreateRequest(12L, "  오늘의 사유  ", 31L));
+
+        assertThat(response.anonymousNickname()).isEqualTo("고요한 파도");
+        ArgumentCaptor<CommunityPost> postCaptor = ArgumentCaptor.forClass(CommunityPost.class);
+        verify(communityPostRepository).save(postCaptor.capture());
+        assertThat(postCaptor.getValue().getContent()).isEqualTo("오늘의 사유");
+        assertThat(postCaptor.getValue().getReflectionId()).isEqualTo(31L);
+    }
+
+    @Test
+    void rejectsBlankPostContent() {
+        CommunityPostService service = new CommunityPostService(
+                communityAccessChecker, userBookRepository, communityPostRepository, communityPostPolicy);
+
+        assertThatThrownBy(() -> service.createPost(
+                1L, new CommunityPostCreateRequest(12L, "  ", null)))
+                .isInstanceOf(BusinessException.class)
+                .extracting(exception -> ((BusinessException) exception).errorCode())
+                .isEqualTo(ErrorCode.INVALID_INPUT);
+    }
+
+    @Test
+    void rejectsProhibitedPostContent() {
+        CommunityPostService service = new CommunityPostService(
+                communityAccessChecker, userBookRepository, communityPostRepository, communityPostPolicy);
+        given(communityPostPolicy.containsProhibitedWord("금칙어가 포함된 내용")).willReturn(true);
+
+        assertThatThrownBy(() -> service.createPost(
+                1L, new CommunityPostCreateRequest(12L, "금칙어가 포함된 내용", null)))
+                .isInstanceOf(BusinessException.class)
+                .extracting(exception -> ((BusinessException) exception).errorCode())
+                .isEqualTo(ErrorCode.UNPROCESSABLE_ENTITY);
+    }
+
+    @Test
+    void rejectsSixthPostWithinThreeMinutes() {
+        CommunityPostService service = new CommunityPostService(
+                communityAccessChecker, userBookRepository, communityPostRepository, communityPostPolicy);
+        given(communityAccessChecker.canEnter(1L)).willReturn(true);
+        given(userBookRepository.findByUserBookIdAndUserId(12L, 1L))
+                .willReturn(Optional.of(new UserBook(1L, book)));
+        given(communityPostRepository.countByUserIdAndCreatedAtAfter(any(), any(Instant.class)))
+                .willReturn(5L);
+
+        assertThatThrownBy(() -> service.createPost(
+                1L, new CommunityPostCreateRequest(12L, "오늘의 사유", null)))
+                .isInstanceOf(BusinessException.class)
+                .extracting(exception -> ((BusinessException) exception).errorCode())
+                .isEqualTo(ErrorCode.TOO_MANY_REQUESTS);
     }
 }
