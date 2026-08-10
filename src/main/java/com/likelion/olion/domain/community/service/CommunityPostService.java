@@ -8,6 +8,7 @@ import com.likelion.olion.domain.community.dto.CommunityPostListResponse;
 import com.likelion.olion.domain.community.dto.CommunityPostUpdateRequest;
 import com.likelion.olion.domain.community.dto.CommunityPostUpdateResponse;
 import com.likelion.olion.domain.community.entity.CommunityPost;
+import com.likelion.olion.domain.community.repository.CommunityPostHeartRepository;
 import com.likelion.olion.domain.community.repository.CommunityPostRepository;
 import com.likelion.olion.global.common.exception.BusinessException;
 import com.likelion.olion.global.common.exception.ErrorCode;
@@ -22,17 +23,20 @@ public class CommunityPostService {
     private final CommunityAccessChecker communityAccessChecker;
     private final UserBookRepository userBookRepository;
     private final CommunityPostRepository communityPostRepository;
+    private final CommunityPostHeartRepository communityPostHeartRepository;
     private final CommunityPostPolicy communityPostPolicy;
 
     public CommunityPostService(
             CommunityAccessChecker communityAccessChecker,
             UserBookRepository userBookRepository,
             CommunityPostRepository communityPostRepository,
+            CommunityPostHeartRepository communityPostHeartRepository,
             CommunityPostPolicy communityPostPolicy
     ) {
         this.communityAccessChecker = communityAccessChecker;
         this.userBookRepository = userBookRepository;
         this.communityPostRepository = communityPostRepository;
+        this.communityPostHeartRepository = communityPostHeartRepository;
         this.communityPostPolicy = communityPostPolicy;
     }
 
@@ -93,9 +97,14 @@ public class CommunityPostService {
                 .findByRoomIdOrderByCreatedAtDesc(roomId).stream()
                 .map(post -> {
                     boolean isMine = post.getUserId().equals(userId);
+                    boolean isHearted = communityPostHeartRepository
+                            .existsByPostPostIdAndUserId(post.getPostId(), userId);
+                    Integer heartCount = isMine
+                            ? Math.toIntExact(communityPostHeartRepository.countByPostPostId(post.getPostId()))
+                            : null;
                     return new CommunityPostListResponse.Post(
                             post.getPostId(), post.getAnonymousNickname(), post.getContent(),
-                            isMine, false, isMine ? 0 : null);
+                            isMine, isHearted, heartCount);
                 })
                 .toList());
     }

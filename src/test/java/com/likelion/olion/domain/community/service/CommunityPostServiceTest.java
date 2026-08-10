@@ -10,6 +10,7 @@ import com.likelion.olion.domain.community.dto.CommunityPostListResponse;
 import com.likelion.olion.domain.community.dto.CommunityPostUpdateRequest;
 import com.likelion.olion.domain.community.dto.CommunityPostUpdateResponse;
 import com.likelion.olion.domain.community.entity.CommunityPost;
+import com.likelion.olion.domain.community.repository.CommunityPostHeartRepository;
 import com.likelion.olion.domain.community.repository.CommunityPostRepository;
 import com.likelion.olion.global.common.exception.BusinessException;
 import com.likelion.olion.global.common.exception.ErrorCode;
@@ -42,6 +43,9 @@ class CommunityPostServiceTest {
     private CommunityPostRepository communityPostRepository;
 
     @Mock
+    private CommunityPostHeartRepository communityPostHeartRepository;
+
+    @Mock
     private CommunityPostPolicy communityPostPolicy;
 
     @Mock
@@ -50,7 +54,8 @@ class CommunityPostServiceTest {
     @Test
     void returnsFirstLinePreviews() {
         CommunityPostService service = new CommunityPostService(
-                communityAccessChecker, userBookRepository, communityPostRepository, communityPostPolicy);
+                communityAccessChecker, userBookRepository, communityPostRepository,
+                communityPostHeartRepository, communityPostPolicy);
         given(communityAccessChecker.canEnter(1L)).willReturn(true);
         given(userBookRepository.findByUserBookIdAndUserId(12L, 1L))
                 .willReturn(Optional.of(new UserBook(1L, book)));
@@ -66,7 +71,8 @@ class CommunityPostServiceTest {
     @Test
     void deniesPreviewWhenUserCannotEnter() {
         CommunityPostService service = new CommunityPostService(
-                communityAccessChecker, userBookRepository, communityPostRepository, communityPostPolicy);
+                communityAccessChecker, userBookRepository, communityPostRepository,
+                communityPostHeartRepository, communityPostPolicy);
         given(communityAccessChecker.canEnter(1L)).willReturn(false);
 
         assertThatThrownBy(() -> service.getPreviews(1L, 12L))
@@ -74,30 +80,39 @@ class CommunityPostServiceTest {
     }
 
     @Test
-    void returnsPostsWithMineAndHeartDefaults() {
+    void returnsPostsWithHeartStatusAndCount() {
         CommunityPostService service = new CommunityPostService(
-                communityAccessChecker, userBookRepository, communityPostRepository, communityPostPolicy);
+                communityAccessChecker, userBookRepository, communityPostRepository,
+                communityPostHeartRepository, communityPostPolicy);
         given(communityAccessChecker.canEnter(1L)).willReturn(true);
         given(userBookRepository.findByUserBookIdAndUserId(12L, 1L))
                 .willReturn(Optional.of(new UserBook(1L, book)));
-        given(communityPostRepository.findByRoomIdOrderByCreatedAtDesc(12L)).willReturn(List.of(
-                new CommunityPost(12L, 1L, "고요한 파도", "내 글"),
-                new CommunityPost(12L, 2L, "조용한 새벽", "다른 사람의 글")));
+        CommunityPost myPost = new CommunityPost(12L, 1L, "고요한 파도", "내 글");
+        CommunityPost otherPost = new CommunityPost(12L, 2L, "조용한 새벽", "다른 사람의 글");
+        ReflectionTestUtils.setField(myPost, "postId", 200L);
+        ReflectionTestUtils.setField(otherPost, "postId", 201L);
+        given(communityPostRepository.findByRoomIdOrderByCreatedAtDesc(12L))
+                .willReturn(List.of(myPost, otherPost));
+        given(communityPostHeartRepository.existsByPostPostIdAndUserId(200L, 1L)).willReturn(false);
+        given(communityPostHeartRepository.existsByPostPostIdAndUserId(201L, 1L)).willReturn(true);
+        given(communityPostHeartRepository.countByPostPostId(200L)).willReturn(4L);
 
         CommunityPostListResponse response = service.getPosts(1L, 12L);
 
         assertThat(response.posts()).hasSize(2);
         assertThat(response.posts().get(0).isMine()).isTrue();
-        assertThat(response.posts().get(0).heartCount()).isZero();
+        assertThat(response.posts().get(0).heartCount()).isEqualTo(4);
+        assertThat(response.posts().get(0).isHearted()).isFalse();
         assertThat(response.posts().get(1).isMine()).isFalse();
         assertThat(response.posts().get(1).heartCount()).isNull();
-        assertThat(response.posts().get(1).isHearted()).isFalse();
+        assertThat(response.posts().get(1).isHearted()).isTrue();
     }
 
     @Test
     void createsAnonymousPost() {
         CommunityPostService service = new CommunityPostService(
-                communityAccessChecker, userBookRepository, communityPostRepository, communityPostPolicy);
+                communityAccessChecker, userBookRepository, communityPostRepository,
+                communityPostHeartRepository, communityPostPolicy);
         given(communityAccessChecker.canEnter(1L)).willReturn(true);
         given(userBookRepository.findByUserBookIdAndUserId(12L, 1L))
                 .willReturn(Optional.of(new UserBook(1L, book)));
@@ -120,7 +135,8 @@ class CommunityPostServiceTest {
     @Test
     void rejectsBlankPostContent() {
         CommunityPostService service = new CommunityPostService(
-                communityAccessChecker, userBookRepository, communityPostRepository, communityPostPolicy);
+                communityAccessChecker, userBookRepository, communityPostRepository,
+                communityPostHeartRepository, communityPostPolicy);
 
         assertThatThrownBy(() -> service.createPost(
                 1L, new CommunityPostCreateRequest(12L, "  ", null)))
@@ -132,7 +148,8 @@ class CommunityPostServiceTest {
     @Test
     void rejectsProhibitedPostContent() {
         CommunityPostService service = new CommunityPostService(
-                communityAccessChecker, userBookRepository, communityPostRepository, communityPostPolicy);
+                communityAccessChecker, userBookRepository, communityPostRepository,
+                communityPostHeartRepository, communityPostPolicy);
         given(communityPostPolicy.containsProhibitedWord("금칙어가 포함된 내용")).willReturn(true);
 
         assertThatThrownBy(() -> service.createPost(
@@ -145,7 +162,8 @@ class CommunityPostServiceTest {
     @Test
     void rejectsSixthPostWithinThreeMinutes() {
         CommunityPostService service = new CommunityPostService(
-                communityAccessChecker, userBookRepository, communityPostRepository, communityPostPolicy);
+                communityAccessChecker, userBookRepository, communityPostRepository,
+                communityPostHeartRepository, communityPostPolicy);
         given(communityAccessChecker.canEnter(1L)).willReturn(true);
         given(userBookRepository.findByUserBookIdAndUserId(12L, 1L))
                 .willReturn(Optional.of(new UserBook(1L, book)));
@@ -162,7 +180,8 @@ class CommunityPostServiceTest {
     @Test
     void updatesOwnPostContent() {
         CommunityPostService service = new CommunityPostService(
-                communityAccessChecker, userBookRepository, communityPostRepository, communityPostPolicy);
+                communityAccessChecker, userBookRepository, communityPostRepository,
+                communityPostHeartRepository, communityPostPolicy);
         CommunityPost post = new CommunityPost(12L, 1L, "고요한 파도", "수정 전 내용");
         ReflectionTestUtils.setField(post, "postId", 200L);
         given(communityPostRepository.findById(200L)).willReturn(Optional.of(post));
@@ -177,7 +196,8 @@ class CommunityPostServiceTest {
     @Test
     void rejectsUpdateWhenPostDoesNotExist() {
         CommunityPostService service = new CommunityPostService(
-                communityAccessChecker, userBookRepository, communityPostRepository, communityPostPolicy);
+                communityAccessChecker, userBookRepository, communityPostRepository,
+                communityPostHeartRepository, communityPostPolicy);
         given(communityPostRepository.findById(200L)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.updatePost(
@@ -190,7 +210,8 @@ class CommunityPostServiceTest {
     @Test
     void rejectsUpdateByAnotherUser() {
         CommunityPostService service = new CommunityPostService(
-                communityAccessChecker, userBookRepository, communityPostRepository, communityPostPolicy);
+                communityAccessChecker, userBookRepository, communityPostRepository,
+                communityPostHeartRepository, communityPostPolicy);
         CommunityPost post = new CommunityPost(12L, 2L, "고요한 파도", "수정 전 내용");
         given(communityPostRepository.findById(200L)).willReturn(Optional.of(post));
 
@@ -204,7 +225,8 @@ class CommunityPostServiceTest {
     @Test
     void rejectsUpdateWithProhibitedContent() {
         CommunityPostService service = new CommunityPostService(
-                communityAccessChecker, userBookRepository, communityPostRepository, communityPostPolicy);
+                communityAccessChecker, userBookRepository, communityPostRepository,
+                communityPostHeartRepository, communityPostPolicy);
         CommunityPost post = new CommunityPost(12L, 1L, "고요한 파도", "수정 전 내용");
         given(communityPostRepository.findById(200L)).willReturn(Optional.of(post));
         given(communityPostPolicy.containsProhibitedWord("금칙어가 포함된 내용")).willReturn(true);
@@ -219,7 +241,8 @@ class CommunityPostServiceTest {
     @Test
     void rejectsUpdateWithBlankContent() {
         CommunityPostService service = new CommunityPostService(
-                communityAccessChecker, userBookRepository, communityPostRepository, communityPostPolicy);
+                communityAccessChecker, userBookRepository, communityPostRepository,
+                communityPostHeartRepository, communityPostPolicy);
         CommunityPost post = new CommunityPost(12L, 1L, "고요한 파도", "수정 전 내용");
         given(communityPostRepository.findById(200L)).willReturn(Optional.of(post));
 
@@ -233,7 +256,8 @@ class CommunityPostServiceTest {
     @Test
     void deletesOwnPost() {
         CommunityPostService service = new CommunityPostService(
-                communityAccessChecker, userBookRepository, communityPostRepository, communityPostPolicy);
+                communityAccessChecker, userBookRepository, communityPostRepository,
+                communityPostHeartRepository, communityPostPolicy);
         CommunityPost post = new CommunityPost(12L, 1L, "고요한 파도", "삭제할 내용");
         given(communityPostRepository.findById(200L)).willReturn(Optional.of(post));
 
@@ -245,7 +269,8 @@ class CommunityPostServiceTest {
     @Test
     void rejectsDeleteWhenPostDoesNotExist() {
         CommunityPostService service = new CommunityPostService(
-                communityAccessChecker, userBookRepository, communityPostRepository, communityPostPolicy);
+                communityAccessChecker, userBookRepository, communityPostRepository,
+                communityPostHeartRepository, communityPostPolicy);
         given(communityPostRepository.findById(200L)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.deletePost(1L, 200L))
@@ -257,7 +282,8 @@ class CommunityPostServiceTest {
     @Test
     void rejectsDeleteByAnotherUser() {
         CommunityPostService service = new CommunityPostService(
-                communityAccessChecker, userBookRepository, communityPostRepository, communityPostPolicy);
+                communityAccessChecker, userBookRepository, communityPostRepository,
+                communityPostHeartRepository, communityPostPolicy);
         CommunityPost post = new CommunityPost(12L, 2L, "고요한 파도", "삭제할 내용");
         given(communityPostRepository.findById(200L)).willReturn(Optional.of(post));
 
