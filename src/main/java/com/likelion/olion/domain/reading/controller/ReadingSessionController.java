@@ -136,4 +136,5 @@ public class ReadingSessionController {
         readingSessionService.deleteRecoverySession(Long.valueOf(principal.getName()), sessionId);
         return ResponseEntity.noContent().build();
     }
+
 }
