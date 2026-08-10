@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -44,5 +45,23 @@ public class CommunityHeartController {
                 .addHeart(Long.valueOf(principal.getName()), postId);
         return ResponseEntity.ok(ApiResponse.success(
                 "SUCCESS", HttpStatus.OK, "공감을 남겼습니다.", response));
+    }
+
+    @DeleteMapping
+    @Operation(summary = "게시글 하트 취소", description = "현재 사용자가 쉼터 게시글에 남긴 공감 하트를 취소합니다.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200", description = "하트 취소 성공"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "404", description = "현재 사용자의 하트 기록을 찾을 수 없음")
+    })
+    public ResponseEntity<ApiResponse<CommunityHeartResponse>> removeHeart(
+            Principal principal,
+            @Parameter(description = "게시글 ID", example = "200") @PathVariable Long postId
+    ) {
+        CommunityHeartResponse response = communityHeartService
+                .removeHeart(Long.valueOf(principal.getName()), postId);
+        return ResponseEntity.ok(ApiResponse.success(
+                "SUCCESS", HttpStatus.OK, "공감을 취소했습니다.", response));
     }
 }

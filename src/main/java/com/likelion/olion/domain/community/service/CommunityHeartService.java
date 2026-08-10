@@ -41,6 +41,16 @@ public class CommunityHeartService {
         return new CommunityHeartResponse(true);
     }
 
+    @Transactional
+    public CommunityHeartResponse removeHeart(Long userId, Long postId) {
+        CommunityPostHeart heart = communityPostHeartRepository
+                .findByPostPostIdAndUserId(postId, userId)
+                .orElseThrow(() -> new BusinessException(
+                        ErrorCode.NOT_FOUND, "공감 기록을 찾을 수 없습니다."));
+        communityPostHeartRepository.delete(heart);
+        return new CommunityHeartResponse(false);
+    }
+
     private BusinessException duplicateHeartException() {
         return new BusinessException(ErrorCode.CONFLICT, "이미 공감한 게시글입니다.");
     }
