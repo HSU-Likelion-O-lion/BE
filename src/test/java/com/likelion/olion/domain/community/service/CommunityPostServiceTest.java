@@ -7,6 +7,8 @@ import com.likelion.olion.domain.community.dto.CommunityPostCreateRequest;
 import com.likelion.olion.domain.community.dto.CommunityPostCreateResponse;
 import com.likelion.olion.domain.community.dto.CommunityPostPreviewResponse;
 import com.likelion.olion.domain.community.dto.CommunityPostListResponse;
+import com.likelion.olion.domain.community.dto.CommunityPostUpdateRequest;
+import com.likelion.olion.domain.community.dto.CommunityPostUpdateResponse;
 import com.likelion.olion.domain.community.entity.CommunityPost;
 import com.likelion.olion.domain.community.repository.CommunityPostRepository;
 import com.likelion.olion.global.common.exception.BusinessException;
@@ -16,6 +18,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.ArgumentCaptor;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Instant;
 import java.util.List;
@@ -154,5 +157,76 @@ class CommunityPostServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting(exception -> ((BusinessException) exception).errorCode())
                 .isEqualTo(ErrorCode.TOO_MANY_REQUESTS);
+    }
+
+    @Test
+    void updatesOwnPostContent() {
+        CommunityPostService service = new CommunityPostService(
+                communityAccessChecker, userBookRepository, communityPostRepository, communityPostPolicy);
+        CommunityPost post = new CommunityPost(12L, 1L, "고요한 파도", "수정 전 내용");
+        ReflectionTestUtils.setField(post, "postId", 200L);
+        given(communityPostRepository.findById(200L)).willReturn(Optional.of(post));
+
+        CommunityPostUpdateResponse response = service.updatePost(
+                1L, 200L, new CommunityPostUpdateRequest("  수정된 내용  "));
+
+        assertThat(response.postId()).isEqualTo(200L);
+        assertThat(post.getContent()).isEqualTo("수정된 내용");
+    }
+
+    @Test
+    void rejectsUpdateWhenPostDoesNotExist() {
+        CommunityPostService service = new CommunityPostService(
+                communityAccessChecker, userBookRepository, communityPostRepository, communityPostPolicy);
+        given(communityPostRepository.findById(200L)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.updatePost(
+                1L, 200L, new CommunityPostUpdateRequest("수정된 내용")))
+                .isInstanceOf(BusinessException.class)
+                .extracting(exception -> ((BusinessException) exception).errorCode())
+                .isEqualTo(ErrorCode.NOT_FOUND);
+    }
+
+    @Test
+    void rejectsUpdateByAnotherUser() {
+        CommunityPostService service = new CommunityPostService(
+                communityAccessChecker, userBookRepository, communityPostRepository, communityPostPolicy);
+        CommunityPost post = new CommunityPost(12L, 2L, "고요한 파도", "수정 전 내용");
+        given(communityPostRepository.findById(200L)).willReturn(Optional.of(post));
+
+        assertThatThrownBy(() -> service.updatePost(
+                1L, 200L, new CommunityPostUpdateRequest("수정된 내용")))
+                .isInstanceOf(BusinessException.class)
+                .extracting(exception -> ((BusinessException) exception).errorCode())
+                .isEqualTo(ErrorCode.FORBIDDEN);
+    }
+
+    @Test
+    void rejectsUpdateWithProhibitedContent() {
+        CommunityPostService service = new CommunityPostService(
+                communityAccessChecker, userBookRepository, communityPostRepository, communityPostPolicy);
+        CommunityPost post = new CommunityPost(12L, 1L, "고요한 파도", "수정 전 내용");
+        given(communityPostRepository.findById(200L)).willReturn(Optional.of(post));
+        given(communityPostPolicy.containsProhibitedWord("금칙어가 포함된 내용")).willReturn(true);
+
+        assertThatThrownBy(() -> service.updatePost(
+                1L, 200L, new CommunityPostUpdateRequest("금칙어가 포함된 내용")))
+                .isInstanceOf(BusinessException.class)
+                .extracting(exception -> ((BusinessException) exception).errorCode())
+                .isEqualTo(ErrorCode.UNPROCESSABLE_ENTITY);
+    }
+
+    @Test
+    void rejectsUpdateWithBlankContent() {
+        CommunityPostService service = new CommunityPostService(
+                communityAccessChecker, userBookRepository, communityPostRepository, communityPostPolicy);
+        CommunityPost post = new CommunityPost(12L, 1L, "고요한 파도", "수정 전 내용");
+        given(communityPostRepository.findById(200L)).willReturn(Optional.of(post));
+
+        assertThatThrownBy(() -> service.updatePost(
+                1L, 200L, new CommunityPostUpdateRequest("  ")))
+                .isInstanceOf(BusinessException.class)
+                .extracting(exception -> ((BusinessException) exception).errorCode())
+                .isEqualTo(ErrorCode.INVALID_INPUT);
     }
 }
