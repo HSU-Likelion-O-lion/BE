@@ -4,6 +4,7 @@ import com.likelion.olion.domain.book.entity.Book;
 import com.likelion.olion.domain.bookshelf.entity.UserBook;
 import com.likelion.olion.domain.bookshelf.repository.UserBookRepository;
 import com.likelion.olion.domain.community.dto.CommunityPostPreviewResponse;
+import com.likelion.olion.domain.community.dto.CommunityPostListResponse;
 import com.likelion.olion.domain.community.entity.CommunityPost;
 import com.likelion.olion.domain.community.repository.CommunityPostRepository;
 import com.likelion.olion.global.common.exception.BusinessException;
@@ -57,5 +58,26 @@ class CommunityPostServiceTest {
 
         assertThatThrownBy(() -> service.getPreviews(1L, 12L))
                 .isInstanceOf(BusinessException.class);
+    }
+
+    @Test
+    void returnsPostsWithMineAndHeartDefaults() {
+        CommunityPostService service = new CommunityPostService(
+                communityAccessChecker, userBookRepository, communityPostRepository);
+        given(communityAccessChecker.canEnter(1L)).willReturn(true);
+        given(userBookRepository.findByUserBookIdAndUserId(12L, 1L))
+                .willReturn(Optional.of(new UserBook(1L, book)));
+        given(communityPostRepository.findByRoomIdOrderByCreatedAtDesc(12L)).willReturn(List.of(
+                new CommunityPost(12L, 1L, "고요한 파도", "내 글"),
+                new CommunityPost(12L, 2L, "조용한 새벽", "다른 사람의 글")));
+
+        CommunityPostListResponse response = service.getPosts(1L, 12L);
+
+        assertThat(response.posts()).hasSize(2);
+        assertThat(response.posts().get(0).isMine()).isTrue();
+        assertThat(response.posts().get(0).heartCount()).isZero();
+        assertThat(response.posts().get(1).isMine()).isFalse();
+        assertThat(response.posts().get(1).heartCount()).isNull();
+        assertThat(response.posts().get(1).isHearted()).isFalse();
     }
 }
