@@ -13,6 +13,7 @@ import com.likelion.olion.domain.reading.dto.ReadingSessionAbandonResponse;
 import com.likelion.olion.domain.reading.dto.ReadingInterruptionRequest;
 import com.likelion.olion.domain.reading.dto.ReadingInterruptionResponse;
 import com.likelion.olion.domain.reading.dto.ReadingStatisticsResponse;
+import com.likelion.olion.domain.reading.dto.StreakResponse;
 import com.likelion.olion.domain.reading.entity.ReadingSession;
 import com.likelion.olion.domain.reading.entity.ReadingInterruption;
 import com.likelion.olion.domain.reading.entity.ReadingInterruptionReason;
@@ -29,6 +30,8 @@ import java.util.Set;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
@@ -201,6 +204,21 @@ public class ReadingSessionService {
                 .map(entry -> new ReadingStatisticsResponse.HourStat(entry.getKey(), entry.getValue()))
                 .toList();
         return new ReadingStatisticsResponse(continueCount, ebookSwitchCount, byWeekday, byHour);
+    }
+
+    public StreakResponse getStreaks(Long userId) {
+        ZoneId zoneId = ZoneId.systemDefault();
+        LocalDate today = LocalDate.now(zoneId);
+        List<LocalDate> achievedDates = readingSessionRepository
+                .findByUserIdAndStatus(userId, ReadingSessionStatus.COMPLETED).stream()
+                .map(session -> session.getStartedAt().atZone(zoneId).toLocalDate())
+                .toList();
+
+        List<StreakResponse.Day> week = java.util.stream.IntStream.rangeClosed(0, 6)
+                .mapToObj(offset -> today.minusDays(6L - offset))
+                .map(date -> new StreakResponse.Day(date, achievedDates.contains(date)))
+                .toList();
+        return new StreakResponse(week);
     }
 
     private int calculateRemainingSeconds(ReadingSession session) {

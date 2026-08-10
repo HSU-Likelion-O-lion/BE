@@ -289,4 +289,20 @@ class ReadingSessionServiceTest {
         assertThat(response.byHour()).hasSize(1);
         assertThat(response.byWeekday().get(0).focusedMinutes()).isEqualTo(30);
     }
+
+    @Test
+    void returnsSevenDaysWithTodayAchievedAfterCompletedSession() {
+        ReadingSessionService service = new ReadingSessionService(
+                readingSessionRepository, readingInterruptionRepository, userBookRepository);
+        ReadingSession completedSession = new ReadingSession(1L, new UserBook(1L, book), 30);
+        completedSession.complete("Question");
+        given(readingSessionRepository.findByUserIdAndStatus(1L, ReadingSessionStatus.COMPLETED))
+                .willReturn(List.of(completedSession));
+
+        var response = service.getStreaks(1L);
+
+        assertThat(response.week()).hasSize(7);
+        assertThat(response.week().get(6).date()).isEqualTo(java.time.LocalDate.now());
+        assertThat(response.week().get(6).achieved()).isTrue();
+    }
 }
