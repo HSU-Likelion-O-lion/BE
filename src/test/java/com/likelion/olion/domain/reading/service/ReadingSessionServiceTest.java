@@ -11,9 +11,12 @@ import com.likelion.olion.domain.reading.dto.ReadingSessionHeartbeatResponse;
 import com.likelion.olion.domain.reading.dto.ReadingSessionResumeResponse;
 import com.likelion.olion.domain.reading.dto.ReadingSessionCompleteResponse;
 import com.likelion.olion.domain.reading.dto.ReadingSessionAbandonResponse;
+import com.likelion.olion.domain.reading.dto.ReadingInterruptionRequest;
+import com.likelion.olion.domain.reading.dto.ReadingInterruptionResponse;
 import com.likelion.olion.domain.reading.entity.ReadingSession;
 import com.likelion.olion.domain.reading.entity.ReadingSessionStatus;
 import com.likelion.olion.domain.reading.repository.ReadingSessionRepository;
+import com.likelion.olion.domain.reading.repository.ReadingInterruptionRepository;
 import com.likelion.olion.global.common.exception.BusinessException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,11 +29,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class ReadingSessionServiceTest {
     @Mock
     private ReadingSessionRepository readingSessionRepository;
+
+    @Mock
+    private ReadingInterruptionRepository readingInterruptionRepository;
 
     @Mock
     private UserBookRepository userBookRepository;
@@ -199,6 +206,36 @@ class ReadingSessionServiceTest {
                 .willReturn(Optional.of(session));
 
         assertThatThrownBy(() -> service.abandon(1L, 100L))
+                .isInstanceOf(BusinessException.class);
+    }
+
+    @Test
+    void recordsInterruptionReason() {
+        ReadingSessionService service = new ReadingSessionService(
+                readingSessionRepository, readingInterruptionRepository, userBookRepository);
+        ReadingSession session = new ReadingSession(1L, new UserBook(1L, book), 30);
+        given(readingSessionRepository.findBySessionIdAndUserId(100L, 1L))
+                .willReturn(Optional.of(session));
+        given(readingInterruptionRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
+
+        ReadingInterruptionResponse response = service.recordInterruption(
+                1L, 100L, new ReadingInterruptionRequest(
+                        "OTHER", "갑자기 졸려서요", java.time.Instant.now()));
+
+        assertThat(response).isNotNull();
+        verify(readingInterruptionRepository).save(any());
+    }
+
+    @Test
+    void rejectsOtherReasonWithoutCustomText() {
+        ReadingSessionService service = new ReadingSessionService(
+                readingSessionRepository, readingInterruptionRepository, userBookRepository);
+        given(readingSessionRepository.findBySessionIdAndUserId(100L, 1L))
+                .willReturn(Optional.of(new ReadingSession(1L, new UserBook(1L, book), 30)));
+
+        assertThatThrownBy(() -> service.recordInterruption(
+                1L, 100L, new ReadingInterruptionRequest(
+                        "OTHER", "", java.time.Instant.now())))
                 .isInstanceOf(BusinessException.class);
     }
 }

@@ -8,6 +8,8 @@ import com.likelion.olion.domain.reading.dto.ReadingSessionHeartbeatResponse;
 import com.likelion.olion.domain.reading.dto.ReadingSessionResumeResponse;
 import com.likelion.olion.domain.reading.dto.ReadingSessionCompleteResponse;
 import com.likelion.olion.domain.reading.dto.ReadingSessionAbandonResponse;
+import com.likelion.olion.domain.reading.dto.ReadingInterruptionRequest;
+import com.likelion.olion.domain.reading.dto.ReadingInterruptionResponse;
 import com.likelion.olion.domain.reading.service.ReadingSessionService;
 import com.likelion.olion.global.common.response.ApiResponse;
 import jakarta.validation.Valid;
@@ -107,5 +109,19 @@ public class ReadingSessionController {
         return ResponseEntity.ok(ApiResponse.success(
                 "세션이 종료되었습니다.",
                 readingSessionService.abandon(Long.valueOf(principal.getName()), sessionId)));
+    }
+
+    @PostMapping("/{sessionId}/interruptions")
+    @Operation(summary = "세션 이탈 사유 기록", description = "독서 세션 중 발생한 이탈 사유와 발생 시각을 기록합니다. OTHER 선택 시 customText가 필요합니다.")
+    public ResponseEntity<ApiResponse<ReadingInterruptionResponse>> recordInterruption(
+            Principal principal,
+            @Parameter(description = "독서 세션 ID", example = "100")
+            @PathVariable Long sessionId,
+            @Valid @RequestBody ReadingInterruptionRequest request
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "이탈 사유가 기록되었습니다.",
+                readingSessionService.recordInterruption(
+                        Long.valueOf(principal.getName()), sessionId, request)));
     }
 }
