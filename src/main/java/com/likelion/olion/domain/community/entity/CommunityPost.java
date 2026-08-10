@@ -28,6 +28,8 @@ public class CommunityPost {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
 
+    private Long reflectionId;
+
     @Column(nullable = false)
     private Instant createdAt;
 
@@ -35,10 +37,21 @@ public class CommunityPost {
     }
 
     public CommunityPost(Long roomId, Long userId, String anonymousNickname, String content) {
+        this(roomId, userId, anonymousNickname, content, null);
+    }
+
+    public CommunityPost(
+            Long roomId,
+            Long userId,
+            String anonymousNickname,
+            String content,
+            Long reflectionId
+    ) {
         this.roomId = roomId;
         this.userId = userId;
         this.anonymousNickname = anonymousNickname;
         this.content = content;
+        this.reflectionId = reflectionId;
         this.createdAt = Instant.now();
     }
 
@@ -47,5 +60,6 @@ public class CommunityPost {
     public Long getUserId() { return userId; }
     public String getAnonymousNickname() { return anonymousNickname; }
     public String getContent() { return content; }
+    public Long getReflectionId() { return reflectionId; }
     public Instant getCreatedAt() { return createdAt; }
 }
