@@ -2,34 +2,38 @@ package com.likelion.olion.domain.emotion.service;
 
 import com.likelion.olion.domain.book.entity.Book;
 import com.likelion.olion.domain.book.repository.BookRepository;
-import com.likelion.olion.domain.emotion.dto.EmotionCardResponse;
 import com.likelion.olion.domain.emotion.dto.EmotionDiagnosisRequest;
 import com.likelion.olion.domain.emotion.dto.EmotionDiagnosisResponse;
 import com.likelion.olion.domain.emotion.entity.DiagnosisSwipe;
 import com.likelion.olion.domain.emotion.entity.EmotionDiagnosis;
+import com.likelion.olion.domain.emotion.entity.EmotionDiagnosisRecommendation;
 import com.likelion.olion.domain.emotion.repository.DiagnosisSwipeRepository;
+import com.likelion.olion.domain.emotion.repository.EmotionDiagnosisRecommendationRepository;
 import com.likelion.olion.domain.emotion.repository.EmotionDiagnosisRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.HashSet;
 import java.util.List;
+import java.util.stream.IntStream;
 
 @Service
 public class EmotionDiagnosisService {
     private final EmotionDiagnosisRepository diagnosisRepository;
     private final DiagnosisSwipeRepository swipeRepository;
     private final BookRepository bookRepository;
+    private final EmotionDiagnosisRecommendationRepository recommendationRepository;
 
     public EmotionDiagnosisService(
             EmotionDiagnosisRepository diagnosisRepository,
             DiagnosisSwipeRepository swipeRepository,
-            BookRepository bookRepository
+            BookRepository bookRepository,
+            EmotionDiagnosisRecommendationRepository recommendationRepository
     ) {
         this.diagnosisRepository = diagnosisRepository;
         this.swipeRepository = swipeRepository;
         this.bookRepository = bookRepository;
+        this.recommendationRepository = recommendationRepository;
     }
 
     @Transactional
@@ -56,14 +60,37 @@ public class EmotionDiagnosisService {
                 .map(this::toRecommendedBook)
                 .toList();
         if (books.isEmpty()) {
-            return Submission.fallback(new EmotionDiagnosisResponse(
+            EmotionDiagnosisResponse response = new EmotionDiagnosisResponse(
                     diagnosis.getDiagnosisId(),
                     List.of(new EmotionDiagnosisResponse.RecommendedBook(
                             1L, "기본 추천 도서", "https://cdn.olion.com/book/1.png", "지금 이 순간을 위한 책"
                     ))
-            ));
+            );
+            saveRecommendations(diagnosis, response.recommendedBooks());
+            return Submission.fallback(response);
         }
-        return Submission.success(new EmotionDiagnosisResponse(diagnosis.getDiagnosisId(), books));
+        EmotionDiagnosisResponse response = new EmotionDiagnosisResponse(
+                diagnosis.getDiagnosisId(), books);
+        saveRecommendations(diagnosis, books);
+        return Submission.success(response);
+    }
+
+    private void saveRecommendations(
+            EmotionDiagnosis diagnosis,
+            List<EmotionDiagnosisResponse.RecommendedBook> books
+    ) {
+        recommendationRepository.saveAll(IntStream.range(0, books.size())
+                .mapToObj(index -> {
+                    EmotionDiagnosisResponse.RecommendedBook book = books.get(index);
+                    return new EmotionDiagnosisRecommendation(
+                            diagnosis,
+                            book.bookId(),
+                            book.title(),
+                            book.coverImageUrl(),
+                            book.shortDesc(),
+                            index);
+                })
+                .toList());
     }
 
     private EmotionDiagnosisResponse.RecommendedBook toRecommendedBook(Book book) {
