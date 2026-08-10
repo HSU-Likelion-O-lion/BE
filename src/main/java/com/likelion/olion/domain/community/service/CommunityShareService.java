@@ -7,6 +7,7 @@ import com.likelion.olion.domain.community.entity.CommunityPost;
 import com.likelion.olion.domain.community.entity.CommunityShare;
 import com.likelion.olion.domain.community.entity.CommunityShareStatus;
 import com.likelion.olion.domain.community.entity.CommunityShareTheme;
+import com.likelion.olion.domain.community.event.CommunityShareCreatedEvent;
 import com.likelion.olion.domain.community.repository.CommunityPostRepository;
 import com.likelion.olion.domain.community.repository.CommunityShareRepository;
 import com.likelion.olion.domain.community.repository.CommunityShareThemeRepository;
@@ -14,6 +15,7 @@ import com.likelion.olion.global.common.exception.BusinessException;
 import com.likelion.olion.global.common.exception.ErrorCode;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.context.ApplicationEventPublisher;
 
 @Service
 public class CommunityShareService {
@@ -23,15 +25,18 @@ public class CommunityShareService {
     private final CommunityPostRepository communityPostRepository;
     private final CommunityShareThemeRepository communityShareThemeRepository;
     private final CommunityShareRepository communityShareRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     public CommunityShareService(
             CommunityPostRepository communityPostRepository,
             CommunityShareThemeRepository communityShareThemeRepository,
-            CommunityShareRepository communityShareRepository
+            CommunityShareRepository communityShareRepository,
+            ApplicationEventPublisher eventPublisher
     ) {
         this.communityPostRepository = communityPostRepository;
         this.communityShareThemeRepository = communityShareThemeRepository;
         this.communityShareRepository = communityShareRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional
@@ -47,6 +52,7 @@ public class CommunityShareService {
 
         CommunityShare share = communityShareRepository.saveAndFlush(
                 new CommunityShare(post, theme, userId));
+        eventPublisher.publishEvent(new CommunityShareCreatedEvent(share.getShareId()));
         return new CommunityShareCreateResponse(share.getShareId(), share.getStatus());
     }
 

@@ -71,6 +71,12 @@ public class CommunityShare {
         this.updatedAt = Instant.now();
     }
 
+    public void requeue() {
+        this.status = CommunityShareStatus.QUEUED;
+        this.imageUrl = null;
+        this.updatedAt = Instant.now();
+    }
+
     public Long getShareId() { return shareId; }
     public CommunityPost getPost() { return post; }
     public CommunityShareTheme getTheme() { return theme; }

@@ -7,6 +7,7 @@ import com.likelion.olion.domain.community.entity.CommunityPost;
 import com.likelion.olion.domain.community.entity.CommunityShare;
 import com.likelion.olion.domain.community.entity.CommunityShareStatus;
 import com.likelion.olion.domain.community.entity.CommunityShareTheme;
+import com.likelion.olion.domain.community.event.CommunityShareCreatedEvent;
 import com.likelion.olion.domain.community.repository.CommunityPostRepository;
 import com.likelion.olion.domain.community.repository.CommunityShareRepository;
 import com.likelion.olion.domain.community.repository.CommunityShareThemeRepository;
@@ -18,6 +19,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.Optional;
 
@@ -38,6 +40,9 @@ class CommunityShareServiceTest {
 
     @Mock
     private CommunityShareRepository communityShareRepository;
+
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     @Test
     void queuesShareImageGeneration() {
@@ -61,6 +66,7 @@ class CommunityShareServiceTest {
         assertThat(shareCaptor.getValue().getPost()).isSameAs(post);
         assertThat(shareCaptor.getValue().getTheme()).isSameAs(theme);
         assertThat(shareCaptor.getValue().getUserId()).isEqualTo(1L);
+        verify(eventPublisher).publishEvent(new CommunityShareCreatedEvent(30L));
     }
 
     @Test
@@ -153,6 +159,7 @@ class CommunityShareServiceTest {
         return new CommunityShareService(
                 communityPostRepository,
                 communityShareThemeRepository,
-                communityShareRepository);
+                communityShareRepository,
+                eventPublisher);
     }
 }
