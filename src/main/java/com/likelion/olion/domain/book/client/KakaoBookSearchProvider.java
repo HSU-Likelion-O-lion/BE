@@ -3,6 +3,7 @@ package com.likelion.olion.domain.book.client;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.likelion.olion.domain.book.config.BookApiProperties;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
@@ -11,6 +12,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Component
+@Order(1)
 @ConditionalOnProperty(prefix = "book.api.kakao", name = "rest-api-key")
 public class KakaoBookSearchProvider implements BookSearchProvider {
     private final RestClient restClient;

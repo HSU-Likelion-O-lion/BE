@@ -4,31 +4,15 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "book.api")
 public class BookApiProperties {
-    private final Naver naver = new Naver();
     private final Kakao kakao = new Kakao();
-
-    public Naver getNaver() {
-        return naver;
-    }
+    private final Aladin aladin = new Aladin();
 
     public Kakao getKakao() {
         return kakao;
     }
 
-    public static class Naver {
-        private String baseUrl = "https://openapi.naver.com";
-        private String clientId = "";
-        private String clientSecret = "";
-
-        public String getBaseUrl() { return baseUrl; }
-        public void setBaseUrl(String baseUrl) { this.baseUrl = baseUrl; }
-        public String getClientId() { return clientId; }
-        public void setClientId(String clientId) { this.clientId = clientId; }
-        public String getClientSecret() { return clientSecret; }
-        public void setClientSecret(String clientSecret) { this.clientSecret = clientSecret; }
-        public boolean isEnabled() {
-            return !clientId.isBlank() && !clientSecret.isBlank();
-        }
+    public Aladin getAladin() {
+        return aladin;
     }
 
     public static class Kakao {
@@ -41,6 +25,19 @@ public class BookApiProperties {
         public void setRestApiKey(String restApiKey) { this.restApiKey = restApiKey; }
         public boolean isEnabled() {
             return !restApiKey.isBlank();
+        }
+    }
+
+    public static class Aladin {
+        private String baseUrl = "https://www.aladin.co.kr";
+        private String ttbKey = "";
+
+        public String getBaseUrl() { return baseUrl; }
+        public void setBaseUrl(String baseUrl) { this.baseUrl = baseUrl; }
+        public String getTtbKey() { return ttbKey; }
+        public void setTtbKey(String ttbKey) { this.ttbKey = ttbKey; }
+        public boolean isEnabled() {
+            return !ttbKey.isBlank();
         }
     }
 }
