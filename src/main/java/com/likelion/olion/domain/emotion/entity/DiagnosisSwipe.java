@@ -24,4 +24,9 @@ public class DiagnosisSwipe {
         this.cardId = cardId;
         this.liked = liked;
     }
+
+    public Long getSwipeId() { return swipeId; }
+    public Long getDiagnosisId() { return diagnosisId; }
+    public Integer getCardId() { return cardId; }
+    public boolean isLiked() { return liked; }
 }
