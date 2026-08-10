@@ -6,6 +6,7 @@ import com.likelion.olion.domain.reading.dto.ActiveReadingSessionResponse;
 import com.likelion.olion.domain.reading.dto.ReadingSessionHeartbeatRequest;
 import com.likelion.olion.domain.reading.dto.ReadingSessionHeartbeatResponse;
 import com.likelion.olion.domain.reading.dto.ReadingSessionResumeResponse;
+import com.likelion.olion.domain.reading.dto.ReadingSessionCompleteResponse;
 import com.likelion.olion.domain.reading.service.ReadingSessionService;
 import com.likelion.olion.global.common.response.ApiResponse;
 import jakarta.validation.Valid;
@@ -71,5 +72,15 @@ public class ReadingSessionController {
         return ResponseEntity.ok(ApiResponse.success(
                 "세션이 재개되었습니다.",
                 readingSessionService.resume(Long.valueOf(principal.getName()), sessionId)));
+    }
+
+    @PatchMapping("/{sessionId}/complete")
+    public ResponseEntity<ApiResponse<ReadingSessionCompleteResponse>> complete(
+            Principal principal,
+            @PathVariable Long sessionId
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "목표를 달성했습니다.",
+                readingSessionService.complete(Long.valueOf(principal.getName()), sessionId)));
     }
 }

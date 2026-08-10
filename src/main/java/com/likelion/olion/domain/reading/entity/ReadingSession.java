@@ -39,6 +39,9 @@ public class ReadingSession {
     @Column(nullable = false)
     private Instant startedAt;
 
+    @Column(columnDefinition = "TEXT")
+    private String aiQuestion;
+
     protected ReadingSession() {
     }
 
@@ -56,4 +59,10 @@ public class ReadingSession {
     public Integer getTargetMinutes() { return targetMinutes; }
     public ReadingSessionStatus getStatus() { return status; }
     public Instant getStartedAt() { return startedAt; }
+    public String getAiQuestion() { return aiQuestion; }
+
+    public void complete(String aiQuestion) {
+        this.status = ReadingSessionStatus.COMPLETED;
+        this.aiQuestion = aiQuestion;
+    }
 }
