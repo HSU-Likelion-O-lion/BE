@@ -5,6 +5,8 @@ import com.likelion.olion.domain.bookshelf.entity.UserBook;
 import com.likelion.olion.domain.bookshelf.repository.UserBookRepository;
 import com.likelion.olion.domain.reading.dto.ReadingSessionStartRequest;
 import com.likelion.olion.domain.reading.dto.ReadingSessionStartResponse;
+import com.likelion.olion.domain.reading.dto.ActiveReadingSessionResponse;
+import com.likelion.olion.domain.reading.entity.ReadingSession;
 import com.likelion.olion.domain.reading.entity.ReadingSessionStatus;
 import com.likelion.olion.domain.reading.repository.ReadingSessionRepository;
 import com.likelion.olion.global.common.exception.BusinessException;
@@ -67,5 +69,30 @@ class ReadingSessionServiceTest {
 
         assertThatThrownBy(() -> service.start(1L, new ReadingSessionStartRequest(10L, 30)))
                 .isInstanceOf(BusinessException.class);
+    }
+
+    @Test
+    void returnsActiveSessionWithRemainingSeconds() {
+        ReadingSessionService service = new ReadingSessionService(readingSessionRepository, userBookRepository);
+        ReadingSession session = new ReadingSession(1L, new UserBook(1L, book), 30);
+        given(readingSessionRepository.findFirstByUserIdAndStatusOrderByStartedAtDesc(
+                1L, ReadingSessionStatus.IN_PROGRESS)).willReturn(Optional.of(session));
+
+        ActiveReadingSessionResponse response = service.getActive(1L);
+
+        assertThat(response.session()).isNotNull();
+        assertThat(response.session().status()).isEqualTo("IN_PROGRESS");
+        assertThat(response.session().remainingSeconds()).isPositive();
+    }
+
+    @Test
+    void returnsNullSessionWhenNothingIsInProgress() {
+        ReadingSessionService service = new ReadingSessionService(readingSessionRepository, userBookRepository);
+        given(readingSessionRepository.findFirstByUserIdAndStatusOrderByStartedAtDesc(
+                1L, ReadingSessionStatus.IN_PROGRESS)).willReturn(Optional.empty());
+
+        ActiveReadingSessionResponse response = service.getActive(1L);
+
+        assertThat(response.session()).isNull();
     }
 }
