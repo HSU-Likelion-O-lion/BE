@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -23,7 +24,7 @@ import java.security.Principal;
 
 @RestController
 @RequestMapping("/api/community/posts")
-@Tag(name = "쉼터 게시글", description = "쉼터 게시글 작성·수정 API")
+@Tag(name = "쉼터 게시글", description = "쉼터 게시글 작성·수정·삭제 API")
 public class CommunityPostCommandController {
     private final CommunityPostService communityPostService;
 
@@ -85,5 +86,26 @@ public class CommunityPostCommandController {
                 Long.valueOf(principal.getName()), postId, request);
         return ResponseEntity.ok(ApiResponse.success(
                 "SUCCESS", HttpStatus.OK, "게시글이 수정되었습니다.", response));
+    }
+
+    @DeleteMapping("/{postId}")
+    @Operation(
+            summary = "본인 게시글 삭제",
+            description = "본인이 작성한 쉼터 게시글을 삭제합니다. 다른 사용자가 작성한 게시글은 삭제할 수 없습니다."
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "204", description = "게시글 삭제 성공"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "403", description = "게시글 작성자가 아님"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "404", description = "게시글을 찾을 수 없음")
+    })
+    public ResponseEntity<Void> deletePost(
+            Principal principal,
+            @PathVariable Long postId
+    ) {
+        communityPostService.deletePost(Long.valueOf(principal.getName()), postId);
+        return ResponseEntity.noContent().build();
     }
 }
