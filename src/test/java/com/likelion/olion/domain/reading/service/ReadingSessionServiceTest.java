@@ -9,6 +9,7 @@ import com.likelion.olion.domain.reading.dto.ActiveReadingSessionResponse;
 import com.likelion.olion.domain.reading.dto.ReadingSessionHeartbeatRequest;
 import com.likelion.olion.domain.reading.dto.ReadingSessionHeartbeatResponse;
 import com.likelion.olion.domain.reading.dto.ReadingSessionResumeResponse;
+import com.likelion.olion.domain.reading.dto.ReadingSessionCompleteResponse;
 import com.likelion.olion.domain.reading.entity.ReadingSession;
 import com.likelion.olion.domain.reading.entity.ReadingSessionStatus;
 import com.likelion.olion.domain.reading.repository.ReadingSessionRepository;
@@ -146,6 +147,32 @@ class ReadingSessionServiceTest {
                 .willReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.resume(1L, 100L))
+                .isInstanceOf(BusinessException.class);
+    }
+
+    @Test
+    void completesInProgressSessionAndReturnsAiQuestion() {
+        ReadingSessionService service = new ReadingSessionService(readingSessionRepository, userBookRepository);
+        ReadingSession session = new ReadingSession(1L, new UserBook(1L, book), 30);
+        given(readingSessionRepository.findBySessionIdAndUserId(100L, 1L))
+                .willReturn(Optional.of(session));
+
+        ReadingSessionCompleteResponse response = service.complete(1L, 100L);
+
+        assertThat(response.status()).isEqualTo("COMPLETED");
+        assertThat(response.aiQuestion()).isNotBlank();
+        assertThat(session.getStatus()).isEqualTo(ReadingSessionStatus.COMPLETED);
+    }
+
+    @Test
+    void rejectsCompletingAlreadyFinishedSession() {
+        ReadingSessionService service = new ReadingSessionService(readingSessionRepository, userBookRepository);
+        ReadingSession session = new ReadingSession(1L, new UserBook(1L, book), 30);
+        session.complete("Already completed");
+        given(readingSessionRepository.findBySessionIdAndUserId(100L, 1L))
+                .willReturn(Optional.of(session));
+
+        assertThatThrownBy(() -> service.complete(1L, 100L))
                 .isInstanceOf(BusinessException.class);
     }
 }

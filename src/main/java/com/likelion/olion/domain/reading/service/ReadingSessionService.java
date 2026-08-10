@@ -8,6 +8,7 @@ import com.likelion.olion.domain.reading.dto.ActiveReadingSessionResponse;
 import com.likelion.olion.domain.reading.dto.ReadingSessionHeartbeatRequest;
 import com.likelion.olion.domain.reading.dto.ReadingSessionHeartbeatResponse;
 import com.likelion.olion.domain.reading.dto.ReadingSessionResumeResponse;
+import com.likelion.olion.domain.reading.dto.ReadingSessionCompleteResponse;
 import com.likelion.olion.domain.reading.entity.ReadingSession;
 import com.likelion.olion.domain.reading.entity.ReadingSessionStatus;
 import com.likelion.olion.domain.reading.repository.ReadingSessionRepository;
@@ -25,6 +26,7 @@ import java.time.temporal.ChronoUnit;
 public class ReadingSessionService {
     private static final Set<Integer> ALLOWED_TARGET_MINUTES = Set.of(15, 30, 60);
     private static final long MAX_HEARTBEAT_DRIFT_SECONDS = 10;
+    private static final String DEFAULT_AI_QUESTION = "오늘 읽은 부분에서 가장 마음에 남는 문장은?";
 
     private final ReadingSessionRepository readingSessionRepository;
     private final UserBookRepository userBookRepository;
@@ -93,6 +95,19 @@ public class ReadingSessionService {
         return new ReadingSessionResumeResponse(
                 session.getStatus().name(),
                 calculateRemainingSeconds(session));
+    }
+
+    @Transactional
+    public ReadingSessionCompleteResponse complete(Long userId, Long sessionId) {
+        ReadingSession session = readingSessionRepository.findBySessionIdAndUserId(sessionId, userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+
+        if (session.getStatus() != ReadingSessionStatus.IN_PROGRESS) {
+            throw new BusinessException(ErrorCode.CONFLICT);
+        }
+
+        session.complete(DEFAULT_AI_QUESTION);
+        return new ReadingSessionCompleteResponse(session.getStatus().name(), session.getAiQuestion());
     }
 
     private int calculateRemainingSeconds(ReadingSession session) {
