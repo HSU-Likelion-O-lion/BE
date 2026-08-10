@@ -305,4 +305,23 @@ class ReadingSessionServiceTest {
         assertThat(response.week().get(6).date()).isEqualTo(java.time.LocalDate.now());
         assertThat(response.week().get(6).achieved()).isTrue();
     }
+
+    @Test
+    void returnsBadgesFromCompletedSessionsInEarnedOrder() {
+        ReadingSessionService service = new ReadingSessionService(
+                readingSessionRepository, readingInterruptionRepository, userBookRepository);
+        ReadingSession first = new ReadingSession(1L, new UserBook(1L, book), 15);
+        ReadingSession second = new ReadingSession(1L, new UserBook(1L, book), 30);
+        first.complete("First");
+        second.complete("Second");
+        given(readingSessionRepository.findByUserIdAndStatus(1L, ReadingSessionStatus.COMPLETED))
+                .willReturn(List.of(second, first));
+
+        var response = service.getBadges(1L);
+
+        assertThat(response.badgeCount()).isEqualTo(2);
+        assertThat(response.badges()).hasSize(2);
+        assertThat(response.badges().get(0).earnedAt())
+                .isBeforeOrEqualTo(response.badges().get(1).earnedAt());
+    }
 }

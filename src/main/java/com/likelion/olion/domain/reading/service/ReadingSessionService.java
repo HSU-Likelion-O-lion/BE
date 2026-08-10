@@ -14,6 +14,7 @@ import com.likelion.olion.domain.reading.dto.ReadingInterruptionRequest;
 import com.likelion.olion.domain.reading.dto.ReadingInterruptionResponse;
 import com.likelion.olion.domain.reading.dto.ReadingStatisticsResponse;
 import com.likelion.olion.domain.reading.dto.StreakResponse;
+import com.likelion.olion.domain.reading.dto.BadgeResponse;
 import com.likelion.olion.domain.reading.entity.ReadingSession;
 import com.likelion.olion.domain.reading.entity.ReadingInterruption;
 import com.likelion.olion.domain.reading.entity.ReadingInterruptionReason;
@@ -219,6 +220,17 @@ public class ReadingSessionService {
                 .map(date -> new StreakResponse.Day(date, achievedDates.contains(date)))
                 .toList();
         return new StreakResponse(week);
+    }
+
+    public BadgeResponse getBadges(Long userId) {
+        List<ReadingSession> completedSessions = readingSessionRepository
+                .findByUserIdAndStatus(userId, ReadingSessionStatus.COMPLETED).stream()
+                .sorted(java.util.Comparator.comparing(ReadingSession::getStartedAt))
+                .toList();
+        List<BadgeResponse.Badge> badges = completedSessions.stream()
+                .map(session -> new BadgeResponse.Badge(session.getStartedAt()))
+                .toList();
+        return new BadgeResponse(badges.size(), badges);
     }
 
     private int calculateRemainingSeconds(ReadingSession session) {
