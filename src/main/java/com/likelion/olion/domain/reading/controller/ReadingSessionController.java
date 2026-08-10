@@ -3,6 +3,8 @@ package com.likelion.olion.domain.reading.controller;
 import com.likelion.olion.domain.reading.dto.ReadingSessionStartRequest;
 import com.likelion.olion.domain.reading.dto.ReadingSessionStartResponse;
 import com.likelion.olion.domain.reading.dto.ActiveReadingSessionResponse;
+import com.likelion.olion.domain.reading.dto.ReadingSessionHeartbeatRequest;
+import com.likelion.olion.domain.reading.dto.ReadingSessionHeartbeatResponse;
 import com.likelion.olion.domain.reading.service.ReadingSessionService;
 import com.likelion.olion.global.common.response.ApiResponse;
 import jakarta.validation.Valid;
@@ -10,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -44,5 +47,17 @@ public class ReadingSessionController {
                 : "진행 중인 세션이 있습니다.";
         String code = response.session() == null ? "SUCCESS_NONE" : "SUCCESS";
         return ResponseEntity.ok(ApiResponse.success(code, HttpStatus.OK, message, response));
+    }
+
+    @PostMapping("/{sessionId}/heartbeat")
+    public ResponseEntity<ApiResponse<ReadingSessionHeartbeatResponse>> heartbeat(
+            Principal principal,
+            @PathVariable Long sessionId,
+            @Valid @RequestBody ReadingSessionHeartbeatRequest request
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "세션이 갱신되었습니다.",
+                readingSessionService.heartbeat(
+                        Long.valueOf(principal.getName()), sessionId, request)));
     }
 }
