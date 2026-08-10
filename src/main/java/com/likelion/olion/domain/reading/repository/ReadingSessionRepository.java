@@ -11,4 +11,6 @@ public interface ReadingSessionRepository extends JpaRepository<ReadingSession, 
 
     Optional<ReadingSession> findFirstByUserIdAndStatusOrderByStartedAtDesc(
             Long userId, ReadingSessionStatus status);
+
+    Optional<ReadingSession> findBySessionIdAndUserId(Long sessionId, Long userId);
 }

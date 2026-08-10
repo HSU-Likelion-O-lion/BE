@@ -6,6 +6,8 @@ import com.likelion.olion.domain.bookshelf.repository.UserBookRepository;
 import com.likelion.olion.domain.reading.dto.ReadingSessionStartRequest;
 import com.likelion.olion.domain.reading.dto.ReadingSessionStartResponse;
 import com.likelion.olion.domain.reading.dto.ActiveReadingSessionResponse;
+import com.likelion.olion.domain.reading.dto.ReadingSessionHeartbeatRequest;
+import com.likelion.olion.domain.reading.dto.ReadingSessionHeartbeatResponse;
 import com.likelion.olion.domain.reading.entity.ReadingSession;
 import com.likelion.olion.domain.reading.entity.ReadingSessionStatus;
 import com.likelion.olion.domain.reading.repository.ReadingSessionRepository;
@@ -94,5 +96,32 @@ class ReadingSessionServiceTest {
         ActiveReadingSessionResponse response = service.getActive(1L);
 
         assertThat(response.session()).isNull();
+    }
+
+    @Test
+    void returnsServerRemainingTimeAndValidHeartbeat() {
+        ReadingSessionService service = new ReadingSessionService(readingSessionRepository, userBookRepository);
+        ReadingSession session = new ReadingSession(1L, new UserBook(1L, book), 30);
+        given(readingSessionRepository.findBySessionIdAndUserId(100L, 1L))
+                .willReturn(Optional.of(session));
+
+        ReadingSessionHeartbeatResponse response = service.heartbeat(
+                1L, 100L, new ReadingSessionHeartbeatRequest(0));
+
+        assertThat(response.remainingSeconds()).isPositive();
+        assertThat(response.valid()).isTrue();
+    }
+
+    @Test
+    void marksHeartbeatInvalidWhenClientTimeDiffersTooMuch() {
+        ReadingSessionService service = new ReadingSessionService(readingSessionRepository, userBookRepository);
+        ReadingSession session = new ReadingSession(1L, new UserBook(1L, book), 30);
+        given(readingSessionRepository.findBySessionIdAndUserId(100L, 1L))
+                .willReturn(Optional.of(session));
+
+        ReadingSessionHeartbeatResponse response = service.heartbeat(
+                1L, 100L, new ReadingSessionHeartbeatRequest(120));
+
+        assertThat(response.valid()).isFalse();
     }
 }

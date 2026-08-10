@@ -5,6 +5,8 @@ import com.likelion.olion.domain.bookshelf.repository.UserBookRepository;
 import com.likelion.olion.domain.reading.dto.ReadingSessionStartRequest;
 import com.likelion.olion.domain.reading.dto.ReadingSessionStartResponse;
 import com.likelion.olion.domain.reading.dto.ActiveReadingSessionResponse;
+import com.likelion.olion.domain.reading.dto.ReadingSessionHeartbeatRequest;
+import com.likelion.olion.domain.reading.dto.ReadingSessionHeartbeatResponse;
 import com.likelion.olion.domain.reading.entity.ReadingSession;
 import com.likelion.olion.domain.reading.entity.ReadingSessionStatus;
 import com.likelion.olion.domain.reading.repository.ReadingSessionRepository;
@@ -14,11 +16,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Set;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 
 @Service
 @Transactional(readOnly = true)
 public class ReadingSessionService {
     private static final Set<Integer> ALLOWED_TARGET_MINUTES = Set.of(15, 30, 60);
+    private static final long MAX_HEARTBEAT_DRIFT_SECONDS = 10;
 
     private final ReadingSessionRepository readingSessionRepository;
     private final UserBookRepository userBookRepository;
@@ -53,5 +58,26 @@ public class ReadingSessionService {
         return ActiveReadingSessionResponse.from(readingSessionRepository
                 .findFirstByUserIdAndStatusOrderByStartedAtDesc(userId, ReadingSessionStatus.IN_PROGRESS)
                 .orElse(null));
+    }
+
+    public ReadingSessionHeartbeatResponse heartbeat(
+            Long userId,
+            Long sessionId,
+            ReadingSessionHeartbeatRequest request
+    ) {
+        ReadingSession session = readingSessionRepository.findBySessionIdAndUserId(sessionId, userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+
+        if (session.getStatus() != ReadingSessionStatus.IN_PROGRESS) {
+            throw new BusinessException(ErrorCode.CONFLICT);
+        }
+
+        long serverElapsedSeconds = Math.max(0,
+                session.getStartedAt().until(Instant.now(), ChronoUnit.SECONDS));
+        int targetSeconds = session.getTargetMinutes() * 60;
+        int remainingSeconds = (int) Math.max(0, targetSeconds - serverElapsedSeconds);
+        boolean valid = Math.abs(serverElapsedSeconds - request.elapsedSeconds())
+                <= MAX_HEARTBEAT_DRIFT_SECONDS;
+        return new ReadingSessionHeartbeatResponse(remainingSeconds, valid);
     }
 }
