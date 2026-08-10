@@ -8,6 +8,7 @@ import com.likelion.olion.domain.reading.dto.ReadingSessionStartResponse;
 import com.likelion.olion.domain.reading.dto.ActiveReadingSessionResponse;
 import com.likelion.olion.domain.reading.dto.ReadingSessionHeartbeatRequest;
 import com.likelion.olion.domain.reading.dto.ReadingSessionHeartbeatResponse;
+import com.likelion.olion.domain.reading.dto.ReadingSessionResumeResponse;
 import com.likelion.olion.domain.reading.entity.ReadingSession;
 import com.likelion.olion.domain.reading.entity.ReadingSessionStatus;
 import com.likelion.olion.domain.reading.repository.ReadingSessionRepository;
@@ -123,5 +124,28 @@ class ReadingSessionServiceTest {
                 1L, 100L, new ReadingSessionHeartbeatRequest(120));
 
         assertThat(response.valid()).isFalse();
+    }
+
+    @Test
+    void resumesInProgressSessionWithRemainingSeconds() {
+        ReadingSessionService service = new ReadingSessionService(readingSessionRepository, userBookRepository);
+        ReadingSession session = new ReadingSession(1L, new UserBook(1L, book), 30);
+        given(readingSessionRepository.findBySessionIdAndUserId(100L, 1L))
+                .willReturn(Optional.of(session));
+
+        ReadingSessionResumeResponse response = service.resume(1L, 100L);
+
+        assertThat(response.status()).isEqualTo("IN_PROGRESS");
+        assertThat(response.remainingSeconds()).isPositive();
+    }
+
+    @Test
+    void rejectsResumeWhenSessionDoesNotExist() {
+        ReadingSessionService service = new ReadingSessionService(readingSessionRepository, userBookRepository);
+        given(readingSessionRepository.findBySessionIdAndUserId(100L, 1L))
+                .willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.resume(1L, 100L))
+                .isInstanceOf(BusinessException.class);
     }
 }

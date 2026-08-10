@@ -5,12 +5,14 @@ import com.likelion.olion.domain.reading.dto.ReadingSessionStartResponse;
 import com.likelion.olion.domain.reading.dto.ActiveReadingSessionResponse;
 import com.likelion.olion.domain.reading.dto.ReadingSessionHeartbeatRequest;
 import com.likelion.olion.domain.reading.dto.ReadingSessionHeartbeatResponse;
+import com.likelion.olion.domain.reading.dto.ReadingSessionResumeResponse;
 import com.likelion.olion.domain.reading.service.ReadingSessionService;
 import com.likelion.olion.global.common.response.ApiResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -59,5 +61,15 @@ public class ReadingSessionController {
                 "세션이 갱신되었습니다.",
                 readingSessionService.heartbeat(
                         Long.valueOf(principal.getName()), sessionId, request)));
+    }
+
+    @PatchMapping("/{sessionId}/resume")
+    public ResponseEntity<ApiResponse<ReadingSessionResumeResponse>> resume(
+            Principal principal,
+            @PathVariable Long sessionId
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "세션이 재개되었습니다.",
+                readingSessionService.resume(Long.valueOf(principal.getName()), sessionId)));
     }
 }

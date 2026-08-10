@@ -7,6 +7,7 @@ import com.likelion.olion.domain.reading.dto.ReadingSessionStartResponse;
 import com.likelion.olion.domain.reading.dto.ActiveReadingSessionResponse;
 import com.likelion.olion.domain.reading.dto.ReadingSessionHeartbeatRequest;
 import com.likelion.olion.domain.reading.dto.ReadingSessionHeartbeatResponse;
+import com.likelion.olion.domain.reading.dto.ReadingSessionResumeResponse;
 import com.likelion.olion.domain.reading.entity.ReadingSession;
 import com.likelion.olion.domain.reading.entity.ReadingSessionStatus;
 import com.likelion.olion.domain.reading.repository.ReadingSessionRepository;
@@ -79,5 +80,25 @@ public class ReadingSessionService {
         boolean valid = Math.abs(serverElapsedSeconds - request.elapsedSeconds())
                 <= MAX_HEARTBEAT_DRIFT_SECONDS;
         return new ReadingSessionHeartbeatResponse(remainingSeconds, valid);
+    }
+
+    public ReadingSessionResumeResponse resume(Long userId, Long sessionId) {
+        ReadingSession session = readingSessionRepository.findBySessionIdAndUserId(sessionId, userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+
+        if (session.getStatus() != ReadingSessionStatus.IN_PROGRESS) {
+            throw new BusinessException(ErrorCode.CONFLICT);
+        }
+
+        return new ReadingSessionResumeResponse(
+                session.getStatus().name(),
+                calculateRemainingSeconds(session));
+    }
+
+    private int calculateRemainingSeconds(ReadingSession session) {
+        long elapsedSeconds = Math.max(0,
+                session.getStartedAt().until(Instant.now(), ChronoUnit.SECONDS));
+        int targetSeconds = session.getTargetMinutes() * 60;
+        return (int) Math.max(0, targetSeconds - elapsedSeconds);
     }
 }
