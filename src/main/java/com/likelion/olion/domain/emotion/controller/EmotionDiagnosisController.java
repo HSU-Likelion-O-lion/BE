@@ -12,9 +12,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.security.Principal;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
 @RequestMapping("/api/emotion-diagnoses")
+@Tag(name = "감정 진단", description = "감정 진단 제출과 추천 도서 API")
 public class EmotionDiagnosisController {
     private final EmotionDiagnosisService emotionDiagnosisService;
 
@@ -23,6 +26,7 @@ public class EmotionDiagnosisController {
     }
 
     @PostMapping
+    @Operation(summary = "감정 진단 제출", description = "감정 카드 선택 결과를 제출하고 진단 ID와 추천 도서를 반환합니다.")
     public ResponseEntity<ApiResponse<EmotionDiagnosisResponse>> submit(
             Principal principal,
             @Valid @RequestBody EmotionDiagnosisRequest request

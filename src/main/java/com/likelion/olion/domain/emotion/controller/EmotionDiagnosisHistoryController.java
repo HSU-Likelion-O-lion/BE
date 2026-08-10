@@ -9,9 +9,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.security.Principal;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
 @RequestMapping("/api/emotion-diagnoses")
+@Tag(name = "감정 진단 이력", description = "사용자의 감정 진단 이력 조회 API")
 public class EmotionDiagnosisHistoryController {
     private final EmotionDiagnosisHistoryService historyService;
 
@@ -20,6 +23,7 @@ public class EmotionDiagnosisHistoryController {
     }
 
     @GetMapping
+    @Operation(summary = "감정 진단 이력 조회", description = "로그인한 사용자가 과거에 제출한 감정 진단 이력을 조회합니다.")
     public ResponseEntity<ApiResponse<EmotionDiagnosisHistoryResponse>> getHistory(Principal principal) {
         Long userId = Long.valueOf(principal.getName());
         return ResponseEntity.ok(ApiResponse.success(
