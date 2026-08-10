@@ -87,4 +87,33 @@ class CommunityHeartServiceTest {
                 .extracting(exception -> ((BusinessException) exception).errorCode())
                 .isEqualTo(ErrorCode.CONFLICT);
     }
+
+    @Test
+    void removesOwnHeart() {
+        CommunityHeartService service = new CommunityHeartService(
+                communityPostRepository, communityPostHeartRepository);
+        CommunityPost post = new CommunityPost(12L, 2L, "고요한 파도", "공감한 내용");
+        CommunityPostHeart heart = new CommunityPostHeart(post, 1L);
+        given(communityPostHeartRepository.findByPostPostIdAndUserId(200L, 1L))
+                .willReturn(Optional.of(heart));
+
+        CommunityHeartResponse response = service.removeHeart(1L, 200L);
+
+        assertThat(response.isHearted()).isFalse();
+        verify(communityPostHeartRepository).delete(heart);
+    }
+
+    @Test
+    void rejectsCancelWhenHeartDoesNotExist() {
+        CommunityHeartService service = new CommunityHeartService(
+                communityPostRepository, communityPostHeartRepository);
+        given(communityPostHeartRepository.findByPostPostIdAndUserId(200L, 1L))
+                .willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.removeHeart(1L, 200L))
+                .isInstanceOf(BusinessException.class)
+                .extracting(exception -> ((BusinessException) exception).errorCode())
+                .isEqualTo(ErrorCode.NOT_FOUND);
+        verify(communityPostHeartRepository, never()).delete(any());
+    }
 }
