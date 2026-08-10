@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.security.Principal;
@@ -123,5 +124,16 @@ public class ReadingSessionController {
                 "이탈 사유가 기록되었습니다.",
                 readingSessionService.recordInterruption(
                         Long.valueOf(principal.getName()), sessionId, request)));
+    }
+
+    @DeleteMapping("/{sessionId}/recovery")
+    @Operation(summary = "복구 세션 삭제", description = "이전 세션을 복구하지 않고 삭제합니다. 삭제 후 새 독서 세션을 시작할 수 있습니다.")
+    public ResponseEntity<Void> deleteRecoverySession(
+            Principal principal,
+            @Parameter(description = "삭제할 독서 세션 ID", example = "100")
+            @PathVariable Long sessionId
+    ) {
+        readingSessionService.deleteRecoverySession(Long.valueOf(principal.getName()), sessionId);
+        return ResponseEntity.noContent().build();
     }
 }
