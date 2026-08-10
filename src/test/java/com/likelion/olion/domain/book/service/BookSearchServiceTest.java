@@ -1,6 +1,8 @@
 package com.likelion.olion.domain.book.service;
 
 import com.likelion.olion.domain.book.dto.BookSearchResponse;
+import com.likelion.olion.domain.book.client.BookSearchProvider;
+import com.likelion.olion.domain.book.client.BookSearchResult;
 import com.likelion.olion.domain.book.entity.Book;
 import com.likelion.olion.domain.book.repository.BookRepository;
 import com.likelion.olion.global.common.exception.BusinessException;
@@ -51,5 +53,39 @@ class BookSearchServiceTest {
         assertThatThrownBy(() -> service.searchBooks("   "))
                 .isInstanceOf(BusinessException.class)
                 .hasMessage("검색어를 입력해주세요.");
+    }
+
+    @Test
+    void 외부_제공자의_검색_결과를_공통_응답으로_변환한다() {
+        BookSearchProvider provider = mock(BookSearchProvider.class);
+        BookService externalService = new BookService(repository, List.of(provider));
+        when(provider.search("아몬드")).thenReturn(List.of(new BookSearchResult(
+                "아몬드", "손원평", "https://image.example/almond.jpg",
+                "창비", "책 소개", "https://book.example/almond", "NAVER"
+        )));
+
+        BookSearchResponse response = externalService.searchBooks(" 아몬드 ");
+
+        assertThat(response.books()).singleElement()
+                .satisfies(book -> {
+                    assertThat(book.bookId()).isNull();
+                    assertThat(book.title()).isEqualTo("아몬드");
+                    assertThat(book.coverImageUrl()).isEqualTo("https://image.example/almond.jpg");
+                });
+        verify(provider).search("아몬드");
+    }
+
+    @Test
+    void 외부_제공자_실패_시_로컬_DB로_검색한다() {
+        BookSearchProvider provider = mock(BookSearchProvider.class);
+        BookService externalService = new BookService(repository, List.of(provider));
+        when(provider.search("아몬드")).thenThrow(new RuntimeException("provider unavailable"));
+        when(repository.findByTitleContainingIgnoreCaseOrAuthorContainingIgnoreCase("아몬드", "아몬드"))
+                .thenReturn(List.of());
+
+        BookSearchResponse response = externalService.searchBooks("아몬드");
+
+        assertThat(response.books()).isEmpty();
+        verify(repository).findByTitleContainingIgnoreCaseOrAuthorContainingIgnoreCase("아몬드", "아몬드");
     }
 }
