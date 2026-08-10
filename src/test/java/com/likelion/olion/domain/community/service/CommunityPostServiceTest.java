@@ -229,4 +229,41 @@ class CommunityPostServiceTest {
                 .extracting(exception -> ((BusinessException) exception).errorCode())
                 .isEqualTo(ErrorCode.INVALID_INPUT);
     }
+
+    @Test
+    void deletesOwnPost() {
+        CommunityPostService service = new CommunityPostService(
+                communityAccessChecker, userBookRepository, communityPostRepository, communityPostPolicy);
+        CommunityPost post = new CommunityPost(12L, 1L, "고요한 파도", "삭제할 내용");
+        given(communityPostRepository.findById(200L)).willReturn(Optional.of(post));
+
+        service.deletePost(1L, 200L);
+
+        verify(communityPostRepository).delete(post);
+    }
+
+    @Test
+    void rejectsDeleteWhenPostDoesNotExist() {
+        CommunityPostService service = new CommunityPostService(
+                communityAccessChecker, userBookRepository, communityPostRepository, communityPostPolicy);
+        given(communityPostRepository.findById(200L)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.deletePost(1L, 200L))
+                .isInstanceOf(BusinessException.class)
+                .extracting(exception -> ((BusinessException) exception).errorCode())
+                .isEqualTo(ErrorCode.NOT_FOUND);
+    }
+
+    @Test
+    void rejectsDeleteByAnotherUser() {
+        CommunityPostService service = new CommunityPostService(
+                communityAccessChecker, userBookRepository, communityPostRepository, communityPostPolicy);
+        CommunityPost post = new CommunityPost(12L, 2L, "고요한 파도", "삭제할 내용");
+        given(communityPostRepository.findById(200L)).willReturn(Optional.of(post));
+
+        assertThatThrownBy(() -> service.deletePost(1L, 200L))
+                .isInstanceOf(BusinessException.class)
+                .extracting(exception -> ((BusinessException) exception).errorCode())
+                .isEqualTo(ErrorCode.FORBIDDEN);
+    }
 }
