@@ -21,9 +21,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.security.Principal;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
 @RequestMapping("/api/reading-sessions")
+@Tag(name = "독서 세션", description = "독서 몰입 세션의 시작·조회·동기화·재개·완료 API")
 public class ReadingSessionController {
     private final ReadingSessionService readingSessionService;
 
@@ -32,6 +36,7 @@ public class ReadingSessionController {
     }
 
     @PostMapping
+    @Operation(summary = "독서 세션 시작", description = "책장 도서와 목표 시간을 지정해 독서 몰입 세션을 시작합니다. 목표 시간은 15, 30, 60분만 허용됩니다.")
     public ResponseEntity<ApiResponse<ReadingSessionStartResponse>> start(
             Principal principal,
             @Valid @RequestBody ReadingSessionStartRequest request
@@ -42,6 +47,7 @@ public class ReadingSessionController {
     }
 
     @GetMapping("/active")
+    @Operation(summary = "진행 중 세션 조회", description = "현재 진행 중인 세션과 서버 기준 남은 시간을 조회합니다. 진행 중인 세션이 없으면 session이 null입니다.")
     public ResponseEntity<ApiResponse<ActiveReadingSessionResponse>> getActive(Principal principal) {
         ActiveReadingSessionResponse response = readingSessionService
                 .getActive(Long.valueOf(principal.getName()));
@@ -53,8 +59,10 @@ public class ReadingSessionController {
     }
 
     @PostMapping("/{sessionId}/heartbeat")
+    @Operation(summary = "세션 heartbeat", description = "클라이언트의 경과 시간을 서버 시간과 비교하고 서버 기준 남은 시간을 반환합니다.")
     public ResponseEntity<ApiResponse<ReadingSessionHeartbeatResponse>> heartbeat(
             Principal principal,
+            @Parameter(description = "독서 세션 ID", example = "100")
             @PathVariable Long sessionId,
             @Valid @RequestBody ReadingSessionHeartbeatRequest request
     ) {
@@ -65,8 +73,10 @@ public class ReadingSessionController {
     }
 
     @PatchMapping("/{sessionId}/resume")
+    @Operation(summary = "독서 세션 재개", description = "이탈 후 기존 독서 세션을 다시 이어 읽습니다. 종료된 세션은 재개할 수 없습니다.")
     public ResponseEntity<ApiResponse<ReadingSessionResumeResponse>> resume(
             Principal principal,
+            @Parameter(description = "독서 세션 ID", example = "100")
             @PathVariable Long sessionId
     ) {
         return ResponseEntity.ok(ApiResponse.success(
@@ -75,8 +85,10 @@ public class ReadingSessionController {
     }
 
     @PatchMapping("/{sessionId}/complete")
+    @Operation(summary = "독서 세션 완료", description = "독서 목표 달성 세션을 완료 처리하고 독서 후 기록을 위한 질문을 반환합니다.")
     public ResponseEntity<ApiResponse<ReadingSessionCompleteResponse>> complete(
             Principal principal,
+            @Parameter(description = "독서 세션 ID", example = "100")
             @PathVariable Long sessionId
     ) {
         return ResponseEntity.ok(ApiResponse.success(
