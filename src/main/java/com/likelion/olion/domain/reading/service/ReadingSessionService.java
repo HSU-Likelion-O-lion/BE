@@ -4,6 +4,7 @@ import com.likelion.olion.domain.bookshelf.entity.UserBook;
 import com.likelion.olion.domain.bookshelf.repository.UserBookRepository;
 import com.likelion.olion.domain.reading.dto.ReadingSessionStartRequest;
 import com.likelion.olion.domain.reading.dto.ReadingSessionStartResponse;
+import com.likelion.olion.domain.reading.dto.ActiveReadingSessionResponse;
 import com.likelion.olion.domain.reading.entity.ReadingSession;
 import com.likelion.olion.domain.reading.entity.ReadingSessionStatus;
 import com.likelion.olion.domain.reading.repository.ReadingSessionRepository;
@@ -46,5 +47,11 @@ public class ReadingSessionService {
         ReadingSession session = readingSessionRepository.save(
                 new ReadingSession(userId, userBook, request.targetMinutes()));
         return ReadingSessionStartResponse.from(session);
+    }
+
+    public ActiveReadingSessionResponse getActive(Long userId) {
+        return ActiveReadingSessionResponse.from(readingSessionRepository
+                .findFirstByUserIdAndStatusOrderByStartedAtDesc(userId, ReadingSessionStatus.IN_PROGRESS)
+                .orElse(null));
     }
 }
