@@ -65,4 +65,8 @@ public class ReadingSession {
         this.status = ReadingSessionStatus.COMPLETED;
         this.aiQuestion = aiQuestion;
     }
+
+    public void abandon() {
+        this.status = ReadingSessionStatus.ABANDONED;
+    }
 }
