@@ -5,6 +5,8 @@ import com.likelion.olion.domain.community.dto.CommunityPostCreateRequest;
 import com.likelion.olion.domain.community.dto.CommunityPostCreateResponse;
 import com.likelion.olion.domain.community.dto.CommunityPostPreviewResponse;
 import com.likelion.olion.domain.community.dto.CommunityPostListResponse;
+import com.likelion.olion.domain.community.dto.CommunityPostUpdateRequest;
+import com.likelion.olion.domain.community.dto.CommunityPostUpdateResponse;
 import com.likelion.olion.domain.community.entity.CommunityPost;
 import com.likelion.olion.domain.community.repository.CommunityPostRepository;
 import com.likelion.olion.global.common.exception.BusinessException;
@@ -46,6 +48,23 @@ public class CommunityPostService {
                 request.roomId(), userId, anonymousNickname, request.content().trim(), request.reflectionId()));
 
         return new CommunityPostCreateResponse(savedPost.getPostId(), savedPost.getAnonymousNickname());
+    }
+
+    @Transactional
+    public CommunityPostUpdateResponse updatePost(
+            Long userId,
+            Long postId,
+            CommunityPostUpdateRequest request
+    ) {
+        CommunityPost post = communityPostRepository.findById(postId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "게시글을 찾을 수 없습니다."));
+        if (!post.getUserId().equals(userId)) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "본인이 작성한 게시글만 수정할 수 있습니다.");
+        }
+
+        validateContent(request.content());
+        post.updateContent(request.content().trim());
+        return new CommunityPostUpdateResponse(post.getPostId());
     }
 
     public CommunityPostPreviewResponse getPreviews(Long userId, Long roomId) {

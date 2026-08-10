@@ -55,6 +55,10 @@ public class CommunityPost {
         this.createdAt = Instant.now();
     }
 
+    public void updateContent(String content) {
+        this.content = content;
+    }
+
     public Long getPostId() { return postId; }
     public Long getRoomId() { return roomId; }
     public Long getUserId() { return userId; }
