@@ -5,6 +5,7 @@ import com.likelion.olion.domain.reading.entity.ReadingSession;
 import com.likelion.olion.domain.reading.repository.ReadingSessionRepository;
 import com.likelion.olion.domain.reflection.dto.ReflectionCreateRequest;
 import com.likelion.olion.domain.reflection.dto.ReflectionCreateResponse;
+import com.likelion.olion.domain.reflection.dto.ReflectionDeleteResponse;
 import com.likelion.olion.domain.reflection.dto.ReflectionListResponse;
 import com.likelion.olion.domain.reflection.dto.ReflectionUpdateRequest;
 import com.likelion.olion.domain.reflection.dto.ReflectionUpdateResponse;
@@ -25,6 +26,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class ReflectionServiceTest {
@@ -107,6 +109,28 @@ class ReflectionServiceTest {
 
         assertThatThrownBy(() -> service.update(1L, 88L, new ReflectionUpdateRequest("수정된 내용")))
                 .isInstanceOf(BusinessException.class);
+    }
+
+    @Test
+    void deletesOwnedReflectionAndReturnsCoverProgress() {
+        ReflectionService service = new ReflectionService(reflectionRepository, readingSessionRepository);
+        Reflection reflection = new Reflection(1L, new ReadingSession(1L, mockUserBook(), 30), "삭제될 내용");
+        ReflectionTestUtils.setField(reflection, "reflectionId", 88L);
+        given(reflectionRepository.findByReflectionIdAndUserId(88L, 1L)).willReturn(Optional.of(reflection));
+        given(reflectionRepository.countByUserId(1L)).willReturn(11L);
+
+        ReflectionDeleteResponse response = service.delete(1L, 88L);
+
+        assertThat(response.coverProgress()).isEqualTo(11);
+        verify(reflectionRepository).delete(reflection);
+    }
+
+    @Test
+    void rejectsDeleteWhenReflectionNotOwnedOrMissing() {
+        ReflectionService service = new ReflectionService(reflectionRepository, readingSessionRepository);
+        given(reflectionRepository.findByReflectionIdAndUserId(88L, 1L)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.delete(1L, 88L)).isInstanceOf(BusinessException.class);
     }
 
     private UserBook mockUserBook() {

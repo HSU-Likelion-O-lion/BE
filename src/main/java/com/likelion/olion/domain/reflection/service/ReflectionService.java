@@ -4,6 +4,7 @@ import com.likelion.olion.domain.reading.entity.ReadingSession;
 import com.likelion.olion.domain.reading.repository.ReadingSessionRepository;
 import com.likelion.olion.domain.reflection.dto.ReflectionCreateRequest;
 import com.likelion.olion.domain.reflection.dto.ReflectionCreateResponse;
+import com.likelion.olion.domain.reflection.dto.ReflectionDeleteResponse;
 import com.likelion.olion.domain.reflection.dto.ReflectionListResponse;
 import com.likelion.olion.domain.reflection.dto.ReflectionUpdateRequest;
 import com.likelion.olion.domain.reflection.dto.ReflectionUpdateResponse;
@@ -54,6 +55,14 @@ public class ReflectionService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "사유를 찾을 수 없습니다."));
         reflection.edit(request.content());
         return new ReflectionUpdateResponse(reflection.getReflectionId());
+    }
+
+    @Transactional
+    public ReflectionDeleteResponse delete(Long userId, Long reflectionId) {
+        Reflection reflection = reflectionRepository.findByReflectionIdAndUserId(reflectionId, userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "사유를 찾을 수 없습니다."));
+        reflectionRepository.delete(reflection);
+        return new ReflectionDeleteResponse(coverProgress(userId));
     }
 
     private int coverProgress(Long userId) {
