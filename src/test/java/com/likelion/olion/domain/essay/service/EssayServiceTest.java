@@ -3,6 +3,7 @@ package com.likelion.olion.domain.essay.service;
 import com.likelion.olion.domain.bookshelf.entity.UserBook;
 import com.likelion.olion.domain.essay.dto.EssayCreateRequest;
 import com.likelion.olion.domain.essay.dto.EssayCreateResponse;
+import com.likelion.olion.domain.essay.dto.EssayJobStatusResponse;
 import com.likelion.olion.domain.essay.entity.Essay;
 import com.likelion.olion.domain.essay.entity.EssayStatus;
 import com.likelion.olion.domain.essay.event.EssayGenerationRequestedEvent;
@@ -19,6 +20,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -66,6 +68,26 @@ class EssayServiceTest {
 
         assertThatThrownBy(() -> service.create(1L, new EssayCreateRequest(ids)))
                 .isInstanceOf(BusinessException.class);
+    }
+
+    @Test
+    void returnsJobStatusForOwnedEssay() {
+        EssayService service = new EssayService(essayRepository, reflectionRepository, eventPublisher);
+        Essay essay = new Essay(1L);
+        essay.startProcessing();
+        given(essayRepository.findByEssayIdAndUserId(7L, 1L)).willReturn(Optional.of(essay));
+
+        EssayJobStatusResponse response = service.getJobStatus(1L, 7L);
+
+        assertThat(response.status()).isEqualTo(EssayStatus.PROCESSING);
+    }
+
+    @Test
+    void rejectsJobStatusWhenEssayNotOwnedOrMissing() {
+        EssayService service = new EssayService(essayRepository, reflectionRepository, eventPublisher);
+        given(essayRepository.findByEssayIdAndUserId(7L, 1L)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.getJobStatus(1L, 7L)).isInstanceOf(BusinessException.class);
     }
 
     private ReadingSession mockSession() {
