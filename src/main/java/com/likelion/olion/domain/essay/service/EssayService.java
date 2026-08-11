@@ -33,17 +33,20 @@ public class EssayService {
     private final EssayChapterRepository essayChapterRepository;
     private final ReflectionRepository reflectionRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final EssayPdfGenerator essayPdfGenerator;
 
     public EssayService(
             EssayRepository essayRepository,
             EssayChapterRepository essayChapterRepository,
             ReflectionRepository reflectionRepository,
-            ApplicationEventPublisher eventPublisher
+            ApplicationEventPublisher eventPublisher,
+            EssayPdfGenerator essayPdfGenerator
     ) {
         this.essayRepository = essayRepository;
         this.essayChapterRepository = essayChapterRepository;
         this.reflectionRepository = reflectionRepository;
         this.eventPublisher = eventPublisher;
+        this.essayPdfGenerator = essayPdfGenerator;
     }
 
     @Transactional
@@ -134,6 +137,11 @@ public class EssayService {
                         contentsByChapter.getOrDefault(chapter.getChapterId(), List.of())))
                 .toList();
         return EssayDetailResponse.of(essay, chapterResponses);
+    }
+
+    @Transactional(readOnly = true)
+    public byte[] downloadPdf(Long userId, Long essayId) {
+        return essayPdfGenerator.generate(getDetail(userId, essayId));
     }
 
     @Transactional

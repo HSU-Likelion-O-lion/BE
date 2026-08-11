@@ -13,7 +13,10 @@ import com.likelion.olion.global.common.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -91,6 +94,22 @@ public class EssayController {
     ) {
         EssayDetailResponse response = essayService.getDetail(Long.valueOf(principal.getName()), essayId);
         return ResponseEntity.ok(ApiResponse.success("에세이 상세를 조회했습니다.", response));
+    }
+
+    @GetMapping("/{essayId}/download")
+    @Operation(summary = "에세이 PDF 다운로드", description = "발행되었거나 편집이 완료된 에세이를 PDF 파일로 다운로드합니다.")
+    public ResponseEntity<byte[]> download(
+            Principal principal,
+            @PathVariable Long essayId
+    ) {
+        byte[] pdf = essayService.downloadPdf(Long.valueOf(principal.getName()), essayId);
+        ContentDisposition disposition = ContentDisposition.attachment()
+                .filename("essay-" + essayId + ".pdf")
+                .build();
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
+                .body(pdf);
     }
 
     @PostMapping("/{essayId}/publish")
