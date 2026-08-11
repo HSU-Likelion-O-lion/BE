@@ -1,5 +1,6 @@
 package com.likelion.olion.domain.capsule.service;
 
+import com.likelion.olion.domain.capsule.dto.InspirationCapsuleHistoryResponse;
 import com.likelion.olion.domain.capsule.dto.InspirationCapsuleOpenResponse;
 import com.likelion.olion.domain.capsule.dto.InspirationCapsuleTodayResponse;
 import com.likelion.olion.domain.capsule.entity.InspirationCapsule;
@@ -61,6 +62,12 @@ public class InspirationCapsuleService {
                     .orElseThrow(() -> exception);
         }
         return toResponse(capsule);
+    }
+
+    @Transactional(readOnly = true)
+    public InspirationCapsuleHistoryResponse getHistory(Long userId) {
+        return InspirationCapsuleHistoryResponse.from(
+                inspirationCapsuleRepository.findByUserIdOrderByOpenedDateDesc(userId));
     }
 
     LocalDate today() {
