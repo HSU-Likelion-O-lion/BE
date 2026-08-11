@@ -5,6 +5,8 @@ import com.likelion.olion.domain.essay.dto.EssayCreateRequest;
 import com.likelion.olion.domain.essay.dto.EssayCreateResponse;
 import com.likelion.olion.domain.essay.dto.EssayDraftResponse;
 import com.likelion.olion.domain.essay.dto.EssayJobStatusResponse;
+import com.likelion.olion.domain.essay.dto.EssayPublishRequest;
+import com.likelion.olion.domain.essay.dto.EssayPublishResponse;
 import com.likelion.olion.domain.essay.entity.Essay;
 import com.likelion.olion.domain.essay.entity.EssayChapter;
 import com.likelion.olion.domain.essay.entity.EssayStatus;
@@ -150,6 +152,30 @@ class EssayServiceTest {
         given(essayRepository.findByEssayIdAndUserId(7L, 1L)).willReturn(Optional.of(essay));
 
         assertThatThrownBy(() -> service.getDraft(1L, 7L)).isInstanceOf(BusinessException.class);
+    }
+
+    @Test
+    void publishesCompletedEssayWithTitle() {
+        Essay essay = new Essay(1L);
+        essay.startProcessing();
+        essay.complete();
+        ReflectionTestUtils.setField(essay, "essayId", 7L);
+        given(essayRepository.findByEssayIdAndUserId(7L, 1L)).willReturn(Optional.of(essay));
+
+        EssayPublishResponse response = service.publish(1L, 7L, new EssayPublishRequest("흔들려도 걷는 마음"));
+
+        assertThat(response.essayId()).isEqualTo(7L);
+        assertThat(response.title()).isEqualTo("흔들려도 걷는 마음");
+        assertThat(response.publishedAt()).isNotNull();
+    }
+
+    @Test
+    void rejectsPublishWhenEssayNotCompleted() {
+        Essay essay = new Essay(1L);
+        given(essayRepository.findByEssayIdAndUserId(7L, 1L)).willReturn(Optional.of(essay));
+
+        assertThatThrownBy(() -> service.publish(1L, 7L, new EssayPublishRequest("제목")))
+                .isInstanceOf(BusinessException.class);
     }
 
     private ReadingSession mockSession() {
