@@ -7,10 +7,13 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface EssayRepository extends JpaRepository<Essay, Long> {
     Optional<Essay> findByEssayIdAndUserId(Long essayId, Long userId);
+
+    List<Essay> findByUserIdOrderByCreatedAtDesc(Long userId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select essay from Essay essay where essay.essayId = :essayId")

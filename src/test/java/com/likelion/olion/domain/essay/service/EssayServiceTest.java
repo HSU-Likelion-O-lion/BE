@@ -5,6 +5,7 @@ import com.likelion.olion.domain.essay.dto.EssayCreateRequest;
 import com.likelion.olion.domain.essay.dto.EssayCreateResponse;
 import com.likelion.olion.domain.essay.dto.EssayDraftResponse;
 import com.likelion.olion.domain.essay.dto.EssayJobStatusResponse;
+import com.likelion.olion.domain.essay.dto.EssayListResponse;
 import com.likelion.olion.domain.essay.dto.EssayPublishRequest;
 import com.likelion.olion.domain.essay.dto.EssayPublishResponse;
 import com.likelion.olion.domain.essay.entity.Essay;
@@ -81,6 +82,19 @@ class EssayServiceTest {
 
         assertThatThrownBy(() -> service.create(1L, new EssayCreateRequest(ids)))
                 .isInstanceOf(BusinessException.class);
+    }
+
+    @Test
+    void returnsEssayListForUserOrderedByCreatedAtDesc() {
+        Essay essay = new Essay(1L);
+        ReflectionTestUtils.setField(essay, "essayId", 7L);
+        given(essayRepository.findByUserIdOrderByCreatedAtDesc(1L)).willReturn(List.of(essay));
+
+        EssayListResponse response = service.getList(1L);
+
+        assertThat(response.essays()).hasSize(1);
+        assertThat(response.essays().get(0).essayId()).isEqualTo(7L);
+        assertThat(response.essays().get(0).status()).isEqualTo(EssayStatus.QUEUED);
     }
 
     @Test
