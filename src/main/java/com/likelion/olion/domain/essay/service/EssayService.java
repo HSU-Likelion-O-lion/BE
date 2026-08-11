@@ -4,6 +4,8 @@ import com.likelion.olion.domain.essay.dto.EssayCreateRequest;
 import com.likelion.olion.domain.essay.dto.EssayCreateResponse;
 import com.likelion.olion.domain.essay.dto.EssayDraftResponse;
 import com.likelion.olion.domain.essay.dto.EssayJobStatusResponse;
+import com.likelion.olion.domain.essay.dto.EssayPublishRequest;
+import com.likelion.olion.domain.essay.dto.EssayPublishResponse;
 import com.likelion.olion.domain.essay.entity.Essay;
 import com.likelion.olion.domain.essay.entity.EssayChapter;
 import com.likelion.olion.domain.essay.entity.EssayStatus;
@@ -99,5 +101,17 @@ public class EssayService {
                         reflectionIdsByChapter.getOrDefault(chapter.getChapterId(), List.of())))
                 .toList();
         return new EssayDraftResponse(chapterResponses);
+    }
+
+    @Transactional
+    public EssayPublishResponse publish(Long userId, Long essayId, EssayPublishRequest request) {
+        Essay essay = essayRepository.findByEssayIdAndUserId(essayId, userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "에세이를 찾을 수 없습니다."));
+        if (essay.getStatus() != EssayStatus.COMPLETED) {
+            throw new BusinessException(ErrorCode.CONFLICT, "아직 편집이 완료되지 않았습니다.");
+        }
+
+        essay.publish(request.title());
+        return new EssayPublishResponse(essay.getEssayId(), essay.getTitle(), essay.getPublishedAt());
     }
 }

@@ -57,6 +57,11 @@ public class Essay {
         this.status = EssayStatus.QUEUED;
     }
 
+    public void publish(String title) {
+        this.title = title;
+        this.publishedAt = Instant.now();
+    }
+
     public Long getEssayId() { return essayId; }
     public Long getUserId() { return userId; }
     public String getTitle() { return title; }
