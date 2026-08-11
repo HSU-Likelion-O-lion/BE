@@ -4,12 +4,15 @@ import com.likelion.olion.domain.reading.entity.ReadingSession;
 import com.likelion.olion.domain.reading.repository.ReadingSessionRepository;
 import com.likelion.olion.domain.reflection.dto.ReflectionCreateRequest;
 import com.likelion.olion.domain.reflection.dto.ReflectionCreateResponse;
+import com.likelion.olion.domain.reflection.dto.ReflectionListResponse;
 import com.likelion.olion.domain.reflection.entity.Reflection;
 import com.likelion.olion.domain.reflection.repository.ReflectionRepository;
 import com.likelion.olion.global.common.exception.BusinessException;
 import com.likelion.olion.global.common.exception.ErrorCode;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 public class ReflectionService {
@@ -33,8 +36,17 @@ public class ReflectionService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "세션을 찾을 수 없습니다."));
 
         Reflection saved = reflectionRepository.save(new Reflection(userId, session, request.content()));
-        long count = reflectionRepository.countByUserId(userId);
-        int coverProgress = (int) Math.min(count, MAX_COVER_PROGRESS);
+        int coverProgress = coverProgress(userId);
         return new ReflectionCreateResponse(saved.getReflectionId(), coverProgress);
+    }
+
+    @Transactional(readOnly = true)
+    public ReflectionListResponse getList(Long userId) {
+        List<Reflection> reflections = reflectionRepository.findByUserIdOrderByCreatedAtDesc(userId);
+        return ReflectionListResponse.of(coverProgress(userId), reflections);
+    }
+
+    private int coverProgress(Long userId) {
+        return (int) Math.min(reflectionRepository.countByUserId(userId), MAX_COVER_PROGRESS);
     }
 }
