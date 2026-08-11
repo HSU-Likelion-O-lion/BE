@@ -6,6 +6,7 @@ import com.likelion.olion.domain.reflection.dto.ReflectionCreateRequest;
 import com.likelion.olion.domain.reflection.dto.ReflectionCreateResponse;
 import com.likelion.olion.domain.reflection.dto.ReflectionDeleteResponse;
 import com.likelion.olion.domain.reflection.dto.ReflectionListResponse;
+import com.likelion.olion.domain.reflection.dto.ReflectionPublishableResponse;
 import com.likelion.olion.domain.reflection.dto.ReflectionUpdateRequest;
 import com.likelion.olion.domain.reflection.dto.ReflectionUpdateResponse;
 import com.likelion.olion.domain.reflection.entity.Reflection;
@@ -20,6 +21,7 @@ import java.util.List;
 @Service
 public class ReflectionService {
     private static final int MAX_COVER_PROGRESS = 30;
+    private static final int PUBLISH_THRESHOLD = 30;
 
     private final ReflectionRepository reflectionRepository;
     private final ReadingSessionRepository readingSessionRepository;
@@ -63,6 +65,15 @@ public class ReflectionService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "사유를 찾을 수 없습니다."));
         reflectionRepository.delete(reflection);
         return new ReflectionDeleteResponse(coverProgress(userId));
+    }
+
+    @Transactional(readOnly = true)
+    public ReflectionPublishableResponse getPublishable(Long userId) {
+        long count = reflectionRepository.countByUserId(userId);
+        if (count < PUBLISH_THRESHOLD) {
+            return ReflectionPublishableResponse.notEnough((int) (PUBLISH_THRESHOLD - count));
+        }
+        return ReflectionPublishableResponse.ready(reflectionRepository.findByUserIdOrderByCreatedAtDesc(userId));
     }
 
     private int coverProgress(Long userId) {

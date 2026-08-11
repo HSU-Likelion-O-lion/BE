@@ -7,6 +7,7 @@ import com.likelion.olion.domain.reflection.dto.ReflectionCreateRequest;
 import com.likelion.olion.domain.reflection.dto.ReflectionCreateResponse;
 import com.likelion.olion.domain.reflection.dto.ReflectionDeleteResponse;
 import com.likelion.olion.domain.reflection.dto.ReflectionListResponse;
+import com.likelion.olion.domain.reflection.dto.ReflectionPublishableResponse;
 import com.likelion.olion.domain.reflection.dto.ReflectionUpdateRequest;
 import com.likelion.olion.domain.reflection.dto.ReflectionUpdateResponse;
 import com.likelion.olion.domain.reflection.entity.Reflection;
@@ -131,6 +132,32 @@ class ReflectionServiceTest {
         given(reflectionRepository.findByReflectionIdAndUserId(88L, 1L)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.delete(1L, 88L)).isInstanceOf(BusinessException.class);
+    }
+
+    @Test
+    void returnsNotEnoughWhenBelowThreshold() {
+        ReflectionService service = new ReflectionService(reflectionRepository, readingSessionRepository);
+        given(reflectionRepository.countByUserId(1L)).willReturn(25L);
+
+        ReflectionPublishableResponse response = service.getPublishable(1L);
+
+        assertThat(response.canPublish()).isFalse();
+        assertThat(response.needed()).isEqualTo(5);
+        assertThat(response.reflections()).isEmpty();
+    }
+
+    @Test
+    void returnsReadyWhenAtOrAboveThreshold() {
+        ReflectionService service = new ReflectionService(reflectionRepository, readingSessionRepository);
+        Reflection reflection = new Reflection(1L, new ReadingSession(1L, mockUserBook(), 30), "오늘 읽은 부분에서...");
+        given(reflectionRepository.countByUserId(1L)).willReturn(30L);
+        given(reflectionRepository.findByUserIdOrderByCreatedAtDesc(1L)).willReturn(List.of(reflection));
+
+        ReflectionPublishableResponse response = service.getPublishable(1L);
+
+        assertThat(response.canPublish()).isTrue();
+        assertThat(response.needed()).isNull();
+        assertThat(response.reflections()).hasSize(1);
     }
 
     private UserBook mockUserBook() {

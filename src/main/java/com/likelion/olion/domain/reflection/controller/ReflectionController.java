@@ -4,6 +4,7 @@ import com.likelion.olion.domain.reflection.dto.ReflectionCreateRequest;
 import com.likelion.olion.domain.reflection.dto.ReflectionCreateResponse;
 import com.likelion.olion.domain.reflection.dto.ReflectionDeleteResponse;
 import com.likelion.olion.domain.reflection.dto.ReflectionListResponse;
+import com.likelion.olion.domain.reflection.dto.ReflectionPublishableResponse;
 import com.likelion.olion.domain.reflection.dto.ReflectionUpdateRequest;
 import com.likelion.olion.domain.reflection.dto.ReflectionUpdateResponse;
 import com.likelion.olion.domain.reflection.service.ReflectionService;
@@ -51,6 +52,14 @@ public class ReflectionController {
         return ResponseEntity.ok(ApiResponse.success(
                 "사유 목록을 조회했습니다.",
                 reflectionService.getList(Long.valueOf(principal.getName()))));
+    }
+
+    @GetMapping("/publishable")
+    @Operation(summary = "출판 가능한 사유 조회", description = "에세이 출판에 사용할 수 있는 사유 목록과 부족 개수를 조회합니다.")
+    public ResponseEntity<ApiResponse<ReflectionPublishableResponse>> getPublishable(Principal principal) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "출판 가능한 사유 목록을 조회했습니다.",
+                reflectionService.getPublishable(Long.valueOf(principal.getName()))));
     }
 
     @PatchMapping("/{reflectionId}")
