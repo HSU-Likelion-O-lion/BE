@@ -2,6 +2,7 @@ package com.likelion.olion.domain.essay.service;
 
 import com.likelion.olion.domain.essay.dto.EssayCreateRequest;
 import com.likelion.olion.domain.essay.dto.EssayCreateResponse;
+import com.likelion.olion.domain.essay.dto.EssayDetailResponse;
 import com.likelion.olion.domain.essay.dto.EssayDraftResponse;
 import com.likelion.olion.domain.essay.dto.EssayJobStatusResponse;
 import com.likelion.olion.domain.essay.dto.EssayListResponse;
@@ -21,6 +22,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -107,6 +109,31 @@ public class EssayService {
                         reflectionIdsByChapter.getOrDefault(chapter.getChapterId(), List.of())))
                 .toList();
         return new EssayDraftResponse(chapterResponses);
+    }
+
+    @Transactional(readOnly = true)
+    public EssayDetailResponse getDetail(Long userId, Long essayId) {
+        Essay essay = essayRepository.findByEssayIdAndUserId(essayId, userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "에세이를 찾을 수 없습니다."));
+        if (essay.getStatus() != EssayStatus.COMPLETED) {
+            throw new BusinessException(ErrorCode.CONFLICT, "아직 편집이 완료되지 않았습니다.");
+        }
+
+        List<EssayChapter> chapters = essayChapterRepository.findByEssay_EssayIdOrderByChapterNo(essayId);
+        Map<Long, List<String>> contentsByChapter = reflectionRepository.findByEssay_EssayId(essayId).stream()
+                .filter(reflection -> reflection.getChapter() != null)
+                .sorted(Comparator.comparing(Reflection::getCreatedAt))
+                .collect(Collectors.groupingBy(
+                        reflection -> reflection.getChapter().getChapterId(),
+                        Collectors.mapping(Reflection::getContent, Collectors.toList())));
+
+        List<EssayDetailResponse.Chapter> chapterResponses = chapters.stream()
+                .map(chapter -> new EssayDetailResponse.Chapter(
+                        chapter.getChapterNo(),
+                        chapter.getTitle(),
+                        contentsByChapter.getOrDefault(chapter.getChapterId(), List.of())))
+                .toList();
+        return EssayDetailResponse.of(essay, chapterResponses);
     }
 
     @Transactional

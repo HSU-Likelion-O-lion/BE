@@ -3,6 +3,7 @@ package com.likelion.olion.domain.essay.service;
 import com.likelion.olion.domain.bookshelf.entity.UserBook;
 import com.likelion.olion.domain.essay.dto.EssayCreateRequest;
 import com.likelion.olion.domain.essay.dto.EssayCreateResponse;
+import com.likelion.olion.domain.essay.dto.EssayDetailResponse;
 import com.likelion.olion.domain.essay.dto.EssayDraftResponse;
 import com.likelion.olion.domain.essay.dto.EssayJobStatusResponse;
 import com.likelion.olion.domain.essay.dto.EssayListResponse;
@@ -166,6 +167,38 @@ class EssayServiceTest {
         given(essayRepository.findByEssayIdAndUserId(7L, 1L)).willReturn(Optional.of(essay));
 
         assertThatThrownBy(() -> service.getDraft(1L, 7L)).isInstanceOf(BusinessException.class);
+    }
+
+    @Test
+    void returnsDetailForCompletedEssay() {
+        Essay essay = new Essay(1L);
+        essay.startProcessing();
+        essay.complete();
+        ReflectionTestUtils.setField(essay, "essayId", 7L);
+        EssayChapter chapter = new EssayChapter(essay, 1, "1장");
+        ReflectionTestUtils.setField(chapter, "chapterId", 100L);
+        Reflection reflection = new Reflection(1L, mockSession(), "사유 1");
+        ReflectionTestUtils.setField(reflection, "reflectionId", 88L);
+        reflection.assignToChapter(chapter);
+
+        given(essayRepository.findByEssayIdAndUserId(7L, 1L)).willReturn(Optional.of(essay));
+        given(essayChapterRepository.findByEssay_EssayIdOrderByChapterNo(7L)).willReturn(List.of(chapter));
+        given(reflectionRepository.findByEssay_EssayId(7L)).willReturn(List.of(reflection));
+
+        EssayDetailResponse response = service.getDetail(1L, 7L);
+
+        assertThat(response.essayId()).isEqualTo(7L);
+        assertThat(response.chapters()).hasSize(1);
+        assertThat(response.chapters().get(0).title()).isEqualTo("1장");
+        assertThat(response.chapters().get(0).reflections()).containsExactly("사유 1");
+    }
+
+    @Test
+    void rejectsDetailWhenEssayNotCompleted() {
+        Essay essay = new Essay(1L);
+        given(essayRepository.findByEssayIdAndUserId(7L, 1L)).willReturn(Optional.of(essay));
+
+        assertThatThrownBy(() -> service.getDetail(1L, 7L)).isInstanceOf(BusinessException.class);
     }
 
     @Test
