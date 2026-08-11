@@ -7,6 +7,17 @@ public record BookSearchResult(
         String publisher,
         String description,
         String externalUrl,
-        String provider
+        String provider,
+        String isbn13,
+        String providerBookId
 ) {
+    public BookSearchResult {
+        externalUrl = blankToNull(externalUrl);
+        isbn13 = blankToNull(isbn13);
+        providerBookId = blankToNull(providerBookId);
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value;
+    }
 }
