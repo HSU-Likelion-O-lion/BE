@@ -2,6 +2,7 @@ package com.likelion.olion.domain.essay.controller;
 
 import com.likelion.olion.domain.essay.dto.EssayCreateRequest;
 import com.likelion.olion.domain.essay.dto.EssayCreateResponse;
+import com.likelion.olion.domain.essay.dto.EssayDetailResponse;
 import com.likelion.olion.domain.essay.dto.EssayDraftResponse;
 import com.likelion.olion.domain.essay.dto.EssayJobStatusResponse;
 import com.likelion.olion.domain.essay.dto.EssayListResponse;
@@ -80,6 +81,16 @@ public class EssayController {
     ) {
         EssayDraftResponse response = essayService.getDraft(Long.valueOf(principal.getName()), essayId);
         return ResponseEntity.ok(ApiResponse.success("에세이 초안을 조회했습니다.", response));
+    }
+
+    @GetMapping("/{essayId}")
+    @Operation(summary = "에세이 상세 조회", description = "발행되었거나 편집이 완료된 에세이의 본문(장별 사유 내용)을 조회합니다.")
+    public ResponseEntity<ApiResponse<EssayDetailResponse>> getDetail(
+            Principal principal,
+            @PathVariable Long essayId
+    ) {
+        EssayDetailResponse response = essayService.getDetail(Long.valueOf(principal.getName()), essayId);
+        return ResponseEntity.ok(ApiResponse.success("에세이 상세를 조회했습니다.", response));
     }
 
     @PostMapping("/{essayId}/publish")
