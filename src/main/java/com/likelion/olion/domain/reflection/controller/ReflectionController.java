@@ -2,6 +2,7 @@ package com.likelion.olion.domain.reflection.controller;
 
 import com.likelion.olion.domain.reflection.dto.ReflectionCreateRequest;
 import com.likelion.olion.domain.reflection.dto.ReflectionCreateResponse;
+import com.likelion.olion.domain.reflection.dto.ReflectionDeleteResponse;
 import com.likelion.olion.domain.reflection.dto.ReflectionListResponse;
 import com.likelion.olion.domain.reflection.dto.ReflectionUpdateRequest;
 import com.likelion.olion.domain.reflection.dto.ReflectionUpdateResponse;
@@ -12,6 +13,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -61,5 +63,15 @@ public class ReflectionController {
         ReflectionUpdateResponse response = reflectionService.update(
                 Long.valueOf(principal.getName()), reflectionId, request);
         return ResponseEntity.ok(ApiResponse.success("사유가 수정되었습니다.", response));
+    }
+
+    @DeleteMapping("/{reflectionId}")
+    @Operation(summary = "사유 삭제", description = "본인이 작성한 사유를 삭제합니다.")
+    public ResponseEntity<ApiResponse<ReflectionDeleteResponse>> delete(
+            Principal principal,
+            @PathVariable Long reflectionId
+    ) {
+        ReflectionDeleteResponse response = reflectionService.delete(Long.valueOf(principal.getName()), reflectionId);
+        return ResponseEntity.ok(ApiResponse.success("사유가 삭제되었습니다.", response));
     }
 }
