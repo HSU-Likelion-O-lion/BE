@@ -10,6 +10,8 @@ import org.springframework.data.repository.query.Param;
 import java.util.Optional;
 
 public interface EssayRepository extends JpaRepository<Essay, Long> {
+    Optional<Essay> findByEssayIdAndUserId(Long essayId, Long userId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select essay from Essay essay where essay.essayId = :essayId")
     Optional<Essay> findByIdForUpdate(@Param("essayId") Long essayId);

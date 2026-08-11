@@ -2,6 +2,7 @@ package com.likelion.olion.domain.essay.service;
 
 import com.likelion.olion.domain.essay.dto.EssayCreateRequest;
 import com.likelion.olion.domain.essay.dto.EssayCreateResponse;
+import com.likelion.olion.domain.essay.dto.EssayJobStatusResponse;
 import com.likelion.olion.domain.essay.entity.Essay;
 import com.likelion.olion.domain.essay.event.EssayGenerationRequestedEvent;
 import com.likelion.olion.domain.essay.repository.EssayRepository;
@@ -45,5 +46,12 @@ public class EssayService {
 
         eventPublisher.publishEvent(new EssayGenerationRequestedEvent(essay.getEssayId()));
         return new EssayCreateResponse(essay.getEssayId(), essay.getStatus());
+    }
+
+    @Transactional(readOnly = true)
+    public EssayJobStatusResponse getJobStatus(Long userId, Long essayId) {
+        Essay essay = essayRepository.findByEssayIdAndUserId(essayId, userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "에세이를 찾을 수 없습니다."));
+        return new EssayJobStatusResponse(essay.getStatus());
     }
 }
