@@ -1,5 +1,6 @@
 package com.likelion.olion.domain.capsule.controller;
 
+import com.likelion.olion.domain.capsule.dto.InspirationCapsuleHistoryResponse;
 import com.likelion.olion.domain.capsule.dto.InspirationCapsuleOpenResponse;
 import com.likelion.olion.domain.capsule.dto.InspirationCapsuleTodayResponse;
 import com.likelion.olion.domain.capsule.service.InspirationCapsuleService;
@@ -38,5 +39,13 @@ public class InspirationCapsuleController {
         return ResponseEntity.ok(ApiResponse.success(
                 "캡슐이 열렸습니다.",
                 inspirationCapsuleService.open(Long.valueOf(principal.getName()))));
+    }
+
+    @GetMapping("/history")
+    @Operation(summary = "캡슐 히스토리 조회", description = "지금까지 열었던 캡슐 이력을 최신순으로 조회합니다.")
+    public ResponseEntity<ApiResponse<InspirationCapsuleHistoryResponse>> getHistory(Principal principal) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "캡슐 이력을 조회했습니다.",
+                inspirationCapsuleService.getHistory(Long.valueOf(principal.getName()))));
     }
 }

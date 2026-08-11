@@ -1,5 +1,6 @@
 package com.likelion.olion.domain.capsule.service;
 
+import com.likelion.olion.domain.capsule.dto.InspirationCapsuleHistoryResponse;
 import com.likelion.olion.domain.capsule.dto.InspirationCapsuleOpenResponse;
 import com.likelion.olion.domain.capsule.dto.InspirationCapsuleTodayResponse;
 import com.likelion.olion.domain.capsule.entity.InspirationCapsule;
@@ -11,6 +12,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -92,5 +94,30 @@ class InspirationCapsuleServiceTest {
 
         assertThat(response.quoteText()).isEqualTo("삶이 그대를 속일지라도...");
         assertThat(response.bookTitle()).isEqualTo("안나 카레니나");
+    }
+
+    @Test
+    void returnsHistoryOrderedByRepository() {
+        InspirationCapsuleService service = new InspirationCapsuleService(inspirationCapsuleRepository);
+        InspirationCapsule recent = new InspirationCapsule(1L, "삶이 그대를 속일지라도...", "안나 카레니나", LocalDate.now());
+        InspirationCapsule older = new InspirationCapsule(1L, "행복한 가정은...", "안나 카레니나", LocalDate.now().minusDays(1));
+        given(inspirationCapsuleRepository.findByUserIdOrderByOpenedDateDesc(1L))
+                .willReturn(List.of(recent, older));
+
+        InspirationCapsuleHistoryResponse response = service.getHistory(1L);
+
+        assertThat(response.capsules()).hasSize(2);
+        assertThat(response.capsules().get(0).quoteText()).isEqualTo("삶이 그대를 속일지라도...");
+        assertThat(response.capsules().get(1).quoteText()).isEqualTo("행복한 가정은...");
+    }
+
+    @Test
+    void returnsEmptyHistoryWhenNoCapsulesYet() {
+        InspirationCapsuleService service = new InspirationCapsuleService(inspirationCapsuleRepository);
+        given(inspirationCapsuleRepository.findByUserIdOrderByOpenedDateDesc(1L)).willReturn(List.of());
+
+        InspirationCapsuleHistoryResponse response = service.getHistory(1L);
+
+        assertThat(response.capsules()).isEmpty();
     }
 }
