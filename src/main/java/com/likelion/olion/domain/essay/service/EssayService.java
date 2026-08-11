@@ -4,6 +4,7 @@ import com.likelion.olion.domain.essay.dto.EssayCreateRequest;
 import com.likelion.olion.domain.essay.dto.EssayCreateResponse;
 import com.likelion.olion.domain.essay.dto.EssayDraftResponse;
 import com.likelion.olion.domain.essay.dto.EssayJobStatusResponse;
+import com.likelion.olion.domain.essay.dto.EssayListResponse;
 import com.likelion.olion.domain.essay.dto.EssayPublishRequest;
 import com.likelion.olion.domain.essay.dto.EssayPublishResponse;
 import com.likelion.olion.domain.essay.entity.Essay;
@@ -57,6 +58,11 @@ public class EssayService {
 
         eventPublisher.publishEvent(new EssayGenerationRequestedEvent(essay.getEssayId()));
         return new EssayCreateResponse(essay.getEssayId(), essay.getStatus());
+    }
+
+    @Transactional(readOnly = true)
+    public EssayListResponse getList(Long userId) {
+        return EssayListResponse.of(essayRepository.findByUserIdOrderByCreatedAtDesc(userId));
     }
 
     @Transactional(readOnly = true)
