@@ -53,4 +53,9 @@ public class Reflection {
     public String getContent() { return content; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
+
+    public void edit(String content) {
+        this.content = content;
+        this.updatedAt = Instant.now();
+    }
 }

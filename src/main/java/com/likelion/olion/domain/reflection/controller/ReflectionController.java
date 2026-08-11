@@ -3,6 +3,8 @@ package com.likelion.olion.domain.reflection.controller;
 import com.likelion.olion.domain.reflection.dto.ReflectionCreateRequest;
 import com.likelion.olion.domain.reflection.dto.ReflectionCreateResponse;
 import com.likelion.olion.domain.reflection.dto.ReflectionListResponse;
+import com.likelion.olion.domain.reflection.dto.ReflectionUpdateRequest;
+import com.likelion.olion.domain.reflection.dto.ReflectionUpdateResponse;
 import com.likelion.olion.domain.reflection.service.ReflectionService;
 import com.likelion.olion.global.common.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -11,6 +13,8 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -45,5 +49,17 @@ public class ReflectionController {
         return ResponseEntity.ok(ApiResponse.success(
                 "사유 목록을 조회했습니다.",
                 reflectionService.getList(Long.valueOf(principal.getName()))));
+    }
+
+    @PatchMapping("/{reflectionId}")
+    @Operation(summary = "사유 수정", description = "본인이 작성한 사유의 내용을 수정합니다.")
+    public ResponseEntity<ApiResponse<ReflectionUpdateResponse>> update(
+            Principal principal,
+            @PathVariable Long reflectionId,
+            @Valid @RequestBody ReflectionUpdateRequest request
+    ) {
+        ReflectionUpdateResponse response = reflectionService.update(
+                Long.valueOf(principal.getName()), reflectionId, request);
+        return ResponseEntity.ok(ApiResponse.success("사유가 수정되었습니다.", response));
     }
 }
