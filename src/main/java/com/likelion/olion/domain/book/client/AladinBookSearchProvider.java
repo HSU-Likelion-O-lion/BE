@@ -73,7 +73,9 @@ public class AladinBookSearchProvider implements BookSearchProvider {
                         text(item, "publisher"),
                         stripHtml(text(item, "description")),
                         text(item, "link"),
-                        "ALADIN"
+                        "ALADIN",
+                        normalizeIsbn13(text(item, "isbn13")),
+                        normalize(text(item, "itemId"))
                 ));
             }
             return results;
@@ -89,5 +91,17 @@ public class AladinBookSearchProvider implements BookSearchProvider {
 
     private static String stripHtml(String value) {
         return value.replaceAll("<[^>]*>", "");
+    }
+
+    private static String normalize(String value) {
+        return value == null || value.isBlank() ? null : value;
+    }
+
+    private static String normalizeIsbn13(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        String normalized = value.replaceAll("[^0-9]", "");
+        return normalized.length() == 13 ? normalized : null;
     }
 }

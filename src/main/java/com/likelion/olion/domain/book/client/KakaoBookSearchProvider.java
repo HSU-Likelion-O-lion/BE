@@ -48,9 +48,34 @@ public class KakaoBookSearchProvider implements BookSearchProvider {
                     item.path("publisher").asText(),
                     item.path("contents").asText(),
                     item.path("url").asText(),
-                    "KAKAO"
+                    "KAKAO",
+                    extractIsbn13(item.path("isbn").asText()),
+                    extractProviderBookId(item.path("isbn").asText())
             ));
         }
         return results;
+    }
+
+    static String extractIsbn13(String value) {
+        return isbnTokens(value).stream()
+                .filter(token -> token.length() == 13)
+                .findFirst()
+                .orElse(null);
+    }
+
+    static String extractProviderBookId(String value) {
+        return isbnTokens(value).stream()
+                .findFirst()
+                .orElse(null);
+    }
+
+    private static List<String> isbnTokens(String value) {
+        if (value == null || value.isBlank()) {
+            return List.of();
+        }
+        return java.util.Arrays.stream(value.trim().split("\\s+"))
+                .map(token -> token.replaceAll("[^0-9Xx]", "").toUpperCase())
+                .filter(token -> token.length() == 10 || token.length() == 13)
+                .toList();
     }
 }

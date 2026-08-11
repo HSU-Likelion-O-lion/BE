@@ -18,16 +18,22 @@ import java.util.logging.Logger;
 public class BookService {
     private final BookRepository bookRepository;
     private final List<BookSearchProvider> searchProviders;
+    private final ExternalBookSyncService externalBookSyncService;
     private static final Logger log = Logger.getLogger(BookService.class.getName());
 
     public BookService(BookRepository bookRepository) {
-        this(bookRepository, List.of());
+        this(bookRepository, List.of(), null);
     }
 
     @Autowired
-    public BookService(BookRepository bookRepository, List<BookSearchProvider> searchProviders) {
+    public BookService(
+            BookRepository bookRepository,
+            List<BookSearchProvider> searchProviders,
+            ExternalBookSyncService externalBookSyncService
+    ) {
         this.bookRepository = bookRepository;
         this.searchProviders = searchProviders;
+        this.externalBookSyncService = externalBookSyncService;
     }
 
     @Transactional(readOnly = true)
@@ -37,7 +43,6 @@ public class BookService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "도서를 찾을 수 없습니다."));
     }
 
-    @Transactional(readOnly = true)
     public BookSearchResponse searchBooks(String query) {
         if (query == null || query.isBlank()) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "검색어를 입력해주세요.");
@@ -48,7 +53,7 @@ public class BookService {
             try {
                 List<BookSearchResult> results = provider.search(normalizedQuery);
                 if (!results.isEmpty()) {
-                    return BookSearchResponse.fromExternal(results);
+                    return BookSearchResponse.from(externalBookSyncService.synchronize(results));
                 }
             } catch (RuntimeException exception) {
                 log.warning("Book provider search failed: " + exception.getMessage());

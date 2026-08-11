@@ -58,17 +58,26 @@ class BookSearchServiceTest {
     @Test
     void 외부_제공자의_검색_결과를_공통_응답으로_변환한다() {
         BookSearchProvider provider = mock(BookSearchProvider.class);
-        BookService externalService = new BookService(repository, List.of(provider));
-        when(provider.search("아몬드")).thenReturn(List.of(new BookSearchResult(
+        ExternalBookSyncService syncService = mock(ExternalBookSyncService.class);
+        BookService externalService = new BookService(repository, List.of(provider), syncService);
+        BookSearchResult result = new BookSearchResult(
                 "아몬드", "손원평", "https://image.example/almond.jpg",
-                "창비", "책 소개", "https://book.example/almond", "NAVER"
-        )));
+                "창비", "책 소개", "https://book.example/almond", "KAKAO",
+                "9788936434267", "9788936434267"
+        );
+        Book savedBook = mock(Book.class);
+        when(savedBook.getBookId()).thenReturn(5L);
+        when(savedBook.getTitle()).thenReturn("아몬드");
+        when(savedBook.getAuthor()).thenReturn("손원평");
+        when(savedBook.getCoverImageUrl()).thenReturn("https://image.example/almond.jpg");
+        when(provider.search("아몬드")).thenReturn(List.of(result));
+        when(syncService.synchronize(List.of(result))).thenReturn(List.of(savedBook));
 
         BookSearchResponse response = externalService.searchBooks(" 아몬드 ");
 
         assertThat(response.books()).singleElement()
                 .satisfies(book -> {
-                    assertThat(book.bookId()).isNull();
+                    assertThat(book.bookId()).isEqualTo(5L);
                     assertThat(book.title()).isEqualTo("아몬드");
                     assertThat(book.coverImageUrl()).isEqualTo("https://image.example/almond.jpg");
                 });
@@ -78,7 +87,8 @@ class BookSearchServiceTest {
     @Test
     void 외부_제공자_실패_시_로컬_DB로_검색한다() {
         BookSearchProvider provider = mock(BookSearchProvider.class);
-        BookService externalService = new BookService(repository, List.of(provider));
+        ExternalBookSyncService syncService = mock(ExternalBookSyncService.class);
+        BookService externalService = new BookService(repository, List.of(provider), syncService);
         when(provider.search("아몬드")).thenThrow(new RuntimeException("provider unavailable"));
         when(repository.findByTitleContainingIgnoreCaseOrAuthorContainingIgnoreCase("아몬드", "아몬드"))
                 .thenReturn(List.of());

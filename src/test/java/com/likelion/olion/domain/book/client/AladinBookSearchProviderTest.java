@@ -19,6 +19,8 @@ class AladinBookSearchProviderTest {
                         <publisher>창비</publisher>
                         <description>책 <b>소개</b></description>
                         <link>https://www.aladin.co.kr/shop/wproduct.aspx?ISBN=123</link>
+                        <isbn13>9788936434267</isbn13>
+                        <itemId>123456789</itemId>
                     </item>
                 </object>
                 """;
@@ -31,6 +33,8 @@ class AladinBookSearchProviderTest {
             assertThat(book.coverImageUrl()).isEqualTo("https://image.example/almond.jpg");
             assertThat(book.description()).isEqualTo("책 소개");
             assertThat(book.provider()).isEqualTo("ALADIN");
+            assertThat(book.isbn13()).isEqualTo("9788936434267");
+            assertThat(book.providerBookId()).isEqualTo("123456789");
         });
     }
 }
