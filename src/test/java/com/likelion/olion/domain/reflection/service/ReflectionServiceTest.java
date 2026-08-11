@@ -6,6 +6,8 @@ import com.likelion.olion.domain.reading.repository.ReadingSessionRepository;
 import com.likelion.olion.domain.reflection.dto.ReflectionCreateRequest;
 import com.likelion.olion.domain.reflection.dto.ReflectionCreateResponse;
 import com.likelion.olion.domain.reflection.dto.ReflectionListResponse;
+import com.likelion.olion.domain.reflection.dto.ReflectionUpdateRequest;
+import com.likelion.olion.domain.reflection.dto.ReflectionUpdateResponse;
 import com.likelion.olion.domain.reflection.entity.Reflection;
 import com.likelion.olion.domain.reflection.repository.ReflectionRepository;
 import com.likelion.olion.global.common.exception.BusinessException;
@@ -83,6 +85,28 @@ class ReflectionServiceTest {
 
         assertThat(response.coverProgress()).isEqualTo(0);
         assertThat(response.reflections()).isEmpty();
+    }
+
+    @Test
+    void updatesOwnedReflection() {
+        ReflectionService service = new ReflectionService(reflectionRepository, readingSessionRepository);
+        Reflection reflection = new Reflection(1L, new ReadingSession(1L, mockUserBook(), 30), "원래 내용");
+        ReflectionTestUtils.setField(reflection, "reflectionId", 88L);
+        given(reflectionRepository.findByReflectionIdAndUserId(88L, 1L)).willReturn(Optional.of(reflection));
+
+        ReflectionUpdateResponse response = service.update(1L, 88L, new ReflectionUpdateRequest("수정된 내용"));
+
+        assertThat(response.reflectionId()).isEqualTo(88L);
+        assertThat(reflection.getContent()).isEqualTo("수정된 내용");
+    }
+
+    @Test
+    void rejectsUpdateWhenReflectionNotOwnedOrMissing() {
+        ReflectionService service = new ReflectionService(reflectionRepository, readingSessionRepository);
+        given(reflectionRepository.findByReflectionIdAndUserId(88L, 1L)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.update(1L, 88L, new ReflectionUpdateRequest("수정된 내용")))
+                .isInstanceOf(BusinessException.class);
     }
 
     private UserBook mockUserBook() {
