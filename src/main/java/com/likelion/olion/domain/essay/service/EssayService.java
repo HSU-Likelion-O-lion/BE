@@ -2,10 +2,13 @@ package com.likelion.olion.domain.essay.service;
 
 import com.likelion.olion.domain.essay.dto.EssayCreateRequest;
 import com.likelion.olion.domain.essay.dto.EssayCreateResponse;
+import com.likelion.olion.domain.essay.dto.EssayDraftResponse;
 import com.likelion.olion.domain.essay.dto.EssayJobStatusResponse;
 import com.likelion.olion.domain.essay.entity.Essay;
+import com.likelion.olion.domain.essay.entity.EssayChapter;
 import com.likelion.olion.domain.essay.entity.EssayStatus;
 import com.likelion.olion.domain.essay.event.EssayGenerationRequestedEvent;
+import com.likelion.olion.domain.essay.repository.EssayChapterRepository;
 import com.likelion.olion.domain.essay.repository.EssayRepository;
 import com.likelion.olion.domain.reflection.entity.Reflection;
 import com.likelion.olion.domain.reflection.repository.ReflectionRepository;
@@ -16,19 +19,24 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class EssayService {
     private final EssayRepository essayRepository;
+    private final EssayChapterRepository essayChapterRepository;
     private final ReflectionRepository reflectionRepository;
     private final ApplicationEventPublisher eventPublisher;
 
     public EssayService(
             EssayRepository essayRepository,
+            EssayChapterRepository essayChapterRepository,
             ReflectionRepository reflectionRepository,
             ApplicationEventPublisher eventPublisher
     ) {
         this.essayRepository = essayRepository;
+        this.essayChapterRepository = essayChapterRepository;
         this.reflectionRepository = reflectionRepository;
         this.eventPublisher = eventPublisher;
     }
@@ -67,5 +75,29 @@ public class EssayService {
         essay.retry();
         eventPublisher.publishEvent(new EssayGenerationRequestedEvent(essay.getEssayId()));
         return new EssayJobStatusResponse(essay.getStatus());
+    }
+
+    @Transactional(readOnly = true)
+    public EssayDraftResponse getDraft(Long userId, Long essayId) {
+        Essay essay = essayRepository.findByEssayIdAndUserId(essayId, userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "에세이를 찾을 수 없습니다."));
+        if (essay.getStatus() != EssayStatus.COMPLETED) {
+            throw new BusinessException(ErrorCode.CONFLICT, "아직 편집이 완료되지 않았습니다.");
+        }
+
+        List<EssayChapter> chapters = essayChapterRepository.findByEssay_EssayIdOrderByChapterNo(essayId);
+        Map<Long, List<Long>> reflectionIdsByChapter = reflectionRepository.findByEssay_EssayId(essayId).stream()
+                .filter(reflection -> reflection.getChapter() != null)
+                .collect(Collectors.groupingBy(
+                        reflection -> reflection.getChapter().getChapterId(),
+                        Collectors.mapping(Reflection::getReflectionId, Collectors.toList())));
+
+        List<EssayDraftResponse.Chapter> chapterResponses = chapters.stream()
+                .map(chapter -> new EssayDraftResponse.Chapter(
+                        chapter.getChapterNo(),
+                        chapter.getTitle(),
+                        reflectionIdsByChapter.getOrDefault(chapter.getChapterId(), List.of())))
+                .toList();
+        return new EssayDraftResponse(chapterResponses);
     }
 }

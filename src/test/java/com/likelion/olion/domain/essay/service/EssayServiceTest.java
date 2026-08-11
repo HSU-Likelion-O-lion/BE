@@ -3,15 +3,19 @@ package com.likelion.olion.domain.essay.service;
 import com.likelion.olion.domain.bookshelf.entity.UserBook;
 import com.likelion.olion.domain.essay.dto.EssayCreateRequest;
 import com.likelion.olion.domain.essay.dto.EssayCreateResponse;
+import com.likelion.olion.domain.essay.dto.EssayDraftResponse;
 import com.likelion.olion.domain.essay.dto.EssayJobStatusResponse;
 import com.likelion.olion.domain.essay.entity.Essay;
+import com.likelion.olion.domain.essay.entity.EssayChapter;
 import com.likelion.olion.domain.essay.entity.EssayStatus;
 import com.likelion.olion.domain.essay.event.EssayGenerationRequestedEvent;
+import com.likelion.olion.domain.essay.repository.EssayChapterRepository;
 import com.likelion.olion.domain.essay.repository.EssayRepository;
 import com.likelion.olion.domain.reading.entity.ReadingSession;
 import com.likelion.olion.domain.reflection.entity.Reflection;
 import com.likelion.olion.domain.reflection.repository.ReflectionRepository;
 import com.likelion.olion.global.common.exception.BusinessException;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -34,13 +38,21 @@ class EssayServiceTest {
     @Mock
     private EssayRepository essayRepository;
     @Mock
+    private EssayChapterRepository essayChapterRepository;
+    @Mock
     private ReflectionRepository reflectionRepository;
     @Mock
     private ApplicationEventPublisher eventPublisher;
 
+    private EssayService service;
+
+    @BeforeEach
+    void setUp() {
+        service = new EssayService(essayRepository, essayChapterRepository, reflectionRepository, eventPublisher);
+    }
+
     @Test
     void createsEssayAndPublishesEvent() {
-        EssayService service = new EssayService(essayRepository, reflectionRepository, eventPublisher);
         List<Long> ids = List.of(1L, 2L, 3L);
         List<Reflection> reflections = ids.stream()
                 .map(id -> new Reflection(1L, mockSession(), "사유 " + id))
@@ -61,7 +73,6 @@ class EssayServiceTest {
 
     @Test
     void rejectsWhenSomeReflectionsNotOwnedOrMissing() {
-        EssayService service = new EssayService(essayRepository, reflectionRepository, eventPublisher);
         List<Long> ids = List.of(1L, 2L, 3L);
         given(reflectionRepository.findByReflectionIdInAndUserId(ids, 1L))
                 .willReturn(List.of(new Reflection(1L, mockSession(), "사유 1")));
@@ -72,7 +83,6 @@ class EssayServiceTest {
 
     @Test
     void returnsJobStatusForOwnedEssay() {
-        EssayService service = new EssayService(essayRepository, reflectionRepository, eventPublisher);
         Essay essay = new Essay(1L);
         essay.startProcessing();
         given(essayRepository.findByEssayIdAndUserId(7L, 1L)).willReturn(Optional.of(essay));
@@ -84,7 +94,6 @@ class EssayServiceTest {
 
     @Test
     void rejectsJobStatusWhenEssayNotOwnedOrMissing() {
-        EssayService service = new EssayService(essayRepository, reflectionRepository, eventPublisher);
         given(essayRepository.findByEssayIdAndUserId(7L, 1L)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.getJobStatus(1L, 7L)).isInstanceOf(BusinessException.class);
@@ -92,7 +101,6 @@ class EssayServiceTest {
 
     @Test
     void retriesFailedEssayAndPublishesEvent() {
-        EssayService service = new EssayService(essayRepository, reflectionRepository, eventPublisher);
         Essay essay = new Essay(1L);
         ReflectionTestUtils.setField(essay, "essayId", 7L);
         essay.startProcessing();
@@ -107,11 +115,41 @@ class EssayServiceTest {
 
     @Test
     void rejectsRetryWhenEssayNotFailed() {
-        EssayService service = new EssayService(essayRepository, reflectionRepository, eventPublisher);
         Essay essay = new Essay(1L);
         given(essayRepository.findByEssayIdAndUserId(7L, 1L)).willReturn(Optional.of(essay));
 
         assertThatThrownBy(() -> service.retry(1L, 7L)).isInstanceOf(BusinessException.class);
+    }
+
+    @Test
+    void returnsDraftForCompletedEssay() {
+        Essay essay = new Essay(1L);
+        essay.startProcessing();
+        essay.complete();
+        ReflectionTestUtils.setField(essay, "essayId", 7L);
+        EssayChapter chapter = new EssayChapter(essay, 1, "1장");
+        ReflectionTestUtils.setField(chapter, "chapterId", 100L);
+        Reflection reflection = new Reflection(1L, mockSession(), "사유 1");
+        ReflectionTestUtils.setField(reflection, "reflectionId", 88L);
+        reflection.assignToChapter(chapter);
+
+        given(essayRepository.findByEssayIdAndUserId(7L, 1L)).willReturn(Optional.of(essay));
+        given(essayChapterRepository.findByEssay_EssayIdOrderByChapterNo(7L)).willReturn(List.of(chapter));
+        given(reflectionRepository.findByEssay_EssayId(7L)).willReturn(List.of(reflection));
+
+        EssayDraftResponse response = service.getDraft(1L, 7L);
+
+        assertThat(response.chapters()).hasSize(1);
+        assertThat(response.chapters().get(0).title()).isEqualTo("1장");
+        assertThat(response.chapters().get(0).reflectionIds()).containsExactly(88L);
+    }
+
+    @Test
+    void rejectsDraftWhenEssayNotCompleted() {
+        Essay essay = new Essay(1L);
+        given(essayRepository.findByEssayIdAndUserId(7L, 1L)).willReturn(Optional.of(essay));
+
+        assertThatThrownBy(() -> service.getDraft(1L, 7L)).isInstanceOf(BusinessException.class);
     }
 
     private ReadingSession mockSession() {
