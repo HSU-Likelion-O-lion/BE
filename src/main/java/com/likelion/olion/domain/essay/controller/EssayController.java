@@ -2,6 +2,7 @@ package com.likelion.olion.domain.essay.controller;
 
 import com.likelion.olion.domain.essay.dto.EssayCreateRequest;
 import com.likelion.olion.domain.essay.dto.EssayCreateResponse;
+import com.likelion.olion.domain.essay.dto.EssayDraftResponse;
 import com.likelion.olion.domain.essay.dto.EssayJobStatusResponse;
 import com.likelion.olion.domain.essay.service.EssayService;
 import com.likelion.olion.global.common.response.ApiResponse;
@@ -59,5 +60,15 @@ public class EssayController {
         EssayJobStatusResponse response = essayService.retry(Long.valueOf(principal.getName()), essayId);
         return ResponseEntity.status(HttpStatus.ACCEPTED)
                 .body(ApiResponse.success("SUCCESS", HttpStatus.ACCEPTED, "에세이 편집을 다시 시도합니다.", response));
+    }
+
+    @GetMapping("/{essayId}/draft")
+    @Operation(summary = "에세이 초안 조회", description = "AI 편집자가 구성한 에세이 목차 초안을 조회합니다.")
+    public ResponseEntity<ApiResponse<EssayDraftResponse>> getDraft(
+            Principal principal,
+            @PathVariable Long essayId
+    ) {
+        EssayDraftResponse response = essayService.getDraft(Long.valueOf(principal.getName()), essayId);
+        return ResponseEntity.ok(ApiResponse.success("에세이 초안을 조회했습니다.", response));
     }
 }
