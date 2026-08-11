@@ -1,0 +1,74 @@
+package com.likelion.olion.domain.essay.service;
+
+import com.likelion.olion.domain.bookshelf.entity.UserBook;
+import com.likelion.olion.domain.essay.dto.EssayCreateRequest;
+import com.likelion.olion.domain.essay.dto.EssayCreateResponse;
+import com.likelion.olion.domain.essay.entity.Essay;
+import com.likelion.olion.domain.essay.entity.EssayStatus;
+import com.likelion.olion.domain.essay.event.EssayGenerationRequestedEvent;
+import com.likelion.olion.domain.essay.repository.EssayRepository;
+import com.likelion.olion.domain.reading.entity.ReadingSession;
+import com.likelion.olion.domain.reflection.entity.Reflection;
+import com.likelion.olion.domain.reflection.repository.ReflectionRepository;
+import com.likelion.olion.global.common.exception.BusinessException;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.test.util.ReflectionTestUtils;
+
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+
+@ExtendWith(MockitoExtension.class)
+class EssayServiceTest {
+    @Mock
+    private EssayRepository essayRepository;
+    @Mock
+    private ReflectionRepository reflectionRepository;
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
+
+    @Test
+    void createsEssayAndPublishesEvent() {
+        EssayService service = new EssayService(essayRepository, reflectionRepository, eventPublisher);
+        List<Long> ids = List.of(1L, 2L, 3L);
+        List<Reflection> reflections = ids.stream()
+                .map(id -> new Reflection(1L, mockSession(), "사유 " + id))
+                .toList();
+        Essay saved = new Essay(1L);
+        ReflectionTestUtils.setField(saved, "essayId", 7L);
+
+        given(reflectionRepository.findByReflectionIdInAndUserId(ids, 1L)).willReturn(reflections);
+        given(essayRepository.saveAndFlush(any(Essay.class))).willReturn(saved);
+
+        EssayCreateResponse response = service.create(1L, new EssayCreateRequest(ids));
+
+        assertThat(response.essayId()).isEqualTo(7L);
+        assertThat(response.jobStatus()).isEqualTo(EssayStatus.QUEUED);
+        reflections.forEach(reflection -> assertThat(reflection.getEssay()).isEqualTo(saved));
+        verify(eventPublisher).publishEvent(new EssayGenerationRequestedEvent(7L));
+    }
+
+    @Test
+    void rejectsWhenSomeReflectionsNotOwnedOrMissing() {
+        EssayService service = new EssayService(essayRepository, reflectionRepository, eventPublisher);
+        List<Long> ids = List.of(1L, 2L, 3L);
+        given(reflectionRepository.findByReflectionIdInAndUserId(ids, 1L))
+                .willReturn(List.of(new Reflection(1L, mockSession(), "사유 1")));
+
+        assertThatThrownBy(() -> service.create(1L, new EssayCreateRequest(ids)))
+                .isInstanceOf(BusinessException.class);
+    }
+
+    private ReadingSession mockSession() {
+        return new ReadingSession(1L, mock(UserBook.class), 30);
+    }
+}
