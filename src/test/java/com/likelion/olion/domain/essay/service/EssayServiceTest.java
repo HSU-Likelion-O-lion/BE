@@ -47,12 +47,15 @@ class EssayServiceTest {
     private ReflectionRepository reflectionRepository;
     @Mock
     private ApplicationEventPublisher eventPublisher;
+    @Mock
+    private EssayPdfGenerator essayPdfGenerator;
 
     private EssayService service;
 
     @BeforeEach
     void setUp() {
-        service = new EssayService(essayRepository, essayChapterRepository, reflectionRepository, eventPublisher);
+        service = new EssayService(
+                essayRepository, essayChapterRepository, reflectionRepository, eventPublisher, essayPdfGenerator);
     }
 
     @Test
@@ -191,6 +194,32 @@ class EssayServiceTest {
         assertThat(response.chapters()).hasSize(1);
         assertThat(response.chapters().get(0).title()).isEqualTo("1장");
         assertThat(response.chapters().get(0).reflections()).containsExactly("사유 1");
+    }
+
+    @Test
+    void downloadsPdfForCompletedEssay() {
+        Essay essay = new Essay(1L);
+        essay.startProcessing();
+        essay.complete();
+        ReflectionTestUtils.setField(essay, "essayId", 7L);
+        byte[] pdfBytes = new byte[]{1, 2, 3};
+
+        given(essayRepository.findByEssayIdAndUserId(7L, 1L)).willReturn(Optional.of(essay));
+        given(essayChapterRepository.findByEssay_EssayIdOrderByChapterNo(7L)).willReturn(List.of());
+        given(reflectionRepository.findByEssay_EssayId(7L)).willReturn(List.of());
+        given(essayPdfGenerator.generate(any(EssayDetailResponse.class))).willReturn(pdfBytes);
+
+        byte[] result = service.downloadPdf(1L, 7L);
+
+        assertThat(result).isEqualTo(pdfBytes);
+    }
+
+    @Test
+    void rejectsDownloadWhenEssayNotCompleted() {
+        Essay essay = new Essay(1L);
+        given(essayRepository.findByEssayIdAndUserId(7L, 1L)).willReturn(Optional.of(essay));
+
+        assertThatThrownBy(() -> service.downloadPdf(1L, 7L)).isInstanceOf(BusinessException.class);
     }
 
     @Test
