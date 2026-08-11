@@ -12,4 +12,8 @@ public interface ReflectionRepository extends JpaRepository<Reflection, Long> {
     List<Reflection> findByUserIdOrderByCreatedAtDesc(Long userId);
 
     Optional<Reflection> findByReflectionIdAndUserId(Long reflectionId, Long userId);
+
+    List<Reflection> findByReflectionIdInAndUserId(List<Long> reflectionIds, Long userId);
+
+    List<Reflection> findByEssay_EssayId(Long essayId);
 }

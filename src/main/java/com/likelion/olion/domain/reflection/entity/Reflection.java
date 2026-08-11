@@ -1,5 +1,7 @@
 package com.likelion.olion.domain.reflection.entity;
 
+import com.likelion.olion.domain.essay.entity.Essay;
+import com.likelion.olion.domain.essay.entity.EssayChapter;
 import com.likelion.olion.domain.reading.entity.ReadingSession;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -30,6 +32,14 @@ public class Reflection {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "essay_id")
+    private Essay essay;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "essay_chapter_id")
+    private EssayChapter chapter;
+
     @Column(nullable = false)
     private Instant createdAt;
 
@@ -51,11 +61,21 @@ public class Reflection {
     public Long getUserId() { return userId; }
     public ReadingSession getSession() { return session; }
     public String getContent() { return content; }
+    public Essay getEssay() { return essay; }
+    public EssayChapter getChapter() { return chapter; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
 
     public void edit(String content) {
         this.content = content;
         this.updatedAt = Instant.now();
+    }
+
+    public void assignToEssay(Essay essay) {
+        this.essay = essay;
+    }
+
+    public void assignToChapter(EssayChapter chapter) {
+        this.chapter = chapter;
     }
 }
