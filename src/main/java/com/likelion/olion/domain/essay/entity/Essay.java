@@ -53,6 +53,10 @@ public class Essay {
         this.status = EssayStatus.FAILED;
     }
 
+    public void retry() {
+        this.status = EssayStatus.QUEUED;
+    }
+
     public Long getEssayId() { return essayId; }
     public Long getUserId() { return userId; }
     public String getTitle() { return title; }

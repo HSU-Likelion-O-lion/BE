@@ -49,4 +49,15 @@ public class EssayController {
         EssayJobStatusResponse response = essayService.getJobStatus(Long.valueOf(principal.getName()), essayId);
         return ResponseEntity.ok(ApiResponse.success("작업 상태를 조회했습니다.", response));
     }
+
+    @PostMapping("/{essayId}/retry")
+    @Operation(summary = "실패한 작업 재시도", description = "FAILED 상태의 에세이 생성 작업을 다시 시도합니다.")
+    public ResponseEntity<ApiResponse<EssayJobStatusResponse>> retry(
+            Principal principal,
+            @PathVariable Long essayId
+    ) {
+        EssayJobStatusResponse response = essayService.retry(Long.valueOf(principal.getName()), essayId);
+        return ResponseEntity.status(HttpStatus.ACCEPTED)
+                .body(ApiResponse.success("SUCCESS", HttpStatus.ACCEPTED, "에세이 편집을 다시 시도합니다.", response));
+    }
 }
