@@ -4,6 +4,7 @@ import com.likelion.olion.domain.essay.dto.EssayCreateRequest;
 import com.likelion.olion.domain.essay.dto.EssayCreateResponse;
 import com.likelion.olion.domain.essay.dto.EssayJobStatusResponse;
 import com.likelion.olion.domain.essay.entity.Essay;
+import com.likelion.olion.domain.essay.entity.EssayStatus;
 import com.likelion.olion.domain.essay.event.EssayGenerationRequestedEvent;
 import com.likelion.olion.domain.essay.repository.EssayRepository;
 import com.likelion.olion.domain.reflection.entity.Reflection;
@@ -52,6 +53,19 @@ public class EssayService {
     public EssayJobStatusResponse getJobStatus(Long userId, Long essayId) {
         Essay essay = essayRepository.findByEssayIdAndUserId(essayId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "에세이를 찾을 수 없습니다."));
+        return new EssayJobStatusResponse(essay.getStatus());
+    }
+
+    @Transactional
+    public EssayJobStatusResponse retry(Long userId, Long essayId) {
+        Essay essay = essayRepository.findByEssayIdAndUserId(essayId, userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "에세이를 찾을 수 없습니다."));
+        if (essay.getStatus() != EssayStatus.FAILED) {
+            throw new BusinessException(ErrorCode.CONFLICT, "실패 상태의 작업만 재시도할 수 있습니다.");
+        }
+
+        essay.retry();
+        eventPublisher.publishEvent(new EssayGenerationRequestedEvent(essay.getEssayId()));
         return new EssayJobStatusResponse(essay.getStatus());
     }
 }

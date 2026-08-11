@@ -90,6 +90,30 @@ class EssayServiceTest {
         assertThatThrownBy(() -> service.getJobStatus(1L, 7L)).isInstanceOf(BusinessException.class);
     }
 
+    @Test
+    void retriesFailedEssayAndPublishesEvent() {
+        EssayService service = new EssayService(essayRepository, reflectionRepository, eventPublisher);
+        Essay essay = new Essay(1L);
+        ReflectionTestUtils.setField(essay, "essayId", 7L);
+        essay.startProcessing();
+        essay.fail();
+        given(essayRepository.findByEssayIdAndUserId(7L, 1L)).willReturn(Optional.of(essay));
+
+        EssayJobStatusResponse response = service.retry(1L, 7L);
+
+        assertThat(response.status()).isEqualTo(EssayStatus.QUEUED);
+        verify(eventPublisher).publishEvent(new EssayGenerationRequestedEvent(7L));
+    }
+
+    @Test
+    void rejectsRetryWhenEssayNotFailed() {
+        EssayService service = new EssayService(essayRepository, reflectionRepository, eventPublisher);
+        Essay essay = new Essay(1L);
+        given(essayRepository.findByEssayIdAndUserId(7L, 1L)).willReturn(Optional.of(essay));
+
+        assertThatThrownBy(() -> service.retry(1L, 7L)).isInstanceOf(BusinessException.class);
+    }
+
     private ReadingSession mockSession() {
         return new ReadingSession(1L, mock(UserBook.class), 30);
     }
