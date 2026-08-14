@@ -50,10 +50,10 @@ public class CommunityReportController {
     ) {
         CommunityReportResponse response = communityReportService
                 .reportPost(Long.valueOf(principal.getName()), postId, request);
-        boolean pendingReview = response.status() == CommunityReportStatus.PENDING_REVIEW;
-        String code = pendingReview ? "SUCCESS_THRESHOLD" : "SUCCESS";
-        String message = pendingReview
-                ? "누적 신고 3회를 초과해 관리자 검토 대기 상태로 전환되었습니다."
+        boolean blinded = response.status() == CommunityReportStatus.BLINDED;
+        String code = blinded ? "SUCCESS_BLINDED" : "SUCCESS";
+        String message = blinded
+                ? "누적 신고 기준을 충족해 게시글이 블라인드 처리되었습니다."
                 : "신고가 접수되었습니다.";
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(
                 code, HttpStatus.CREATED, message, response));

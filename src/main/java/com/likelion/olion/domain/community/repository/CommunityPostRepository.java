@@ -16,6 +16,8 @@ public interface CommunityPostRepository extends JpaRepository<CommunityPost, Lo
 
     long countByUserIdAndCreatedAtAfter(Long userId, Instant createdAt);
 
+    List<CommunityPost> findByReflectionId(Long reflectionId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select post from CommunityPost post where post.postId = :postId")
     Optional<CommunityPost> findByIdForUpdate(@Param("postId") Long postId);

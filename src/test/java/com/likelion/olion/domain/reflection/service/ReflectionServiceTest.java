@@ -1,6 +1,8 @@
 package com.likelion.olion.domain.reflection.service;
 
 import com.likelion.olion.domain.bookshelf.entity.UserBook;
+import com.likelion.olion.domain.community.entity.CommunityPost;
+import com.likelion.olion.domain.community.repository.CommunityPostRepository;
 import com.likelion.olion.domain.reading.entity.ReadingSession;
 import com.likelion.olion.domain.reading.repository.ReadingSessionRepository;
 import com.likelion.olion.domain.reflection.dto.ReflectionCreateRequest;
@@ -36,6 +38,9 @@ class ReflectionServiceTest {
 
     @Mock
     private ReadingSessionRepository readingSessionRepository;
+
+    @Mock
+    private CommunityPostRepository communityPostRepository;
 
     @Test
     void createsReflectionForOwnedSession() {
@@ -104,6 +109,22 @@ class ReflectionServiceTest {
     }
 
     @Test
+    void synchronizesLinkedShelterPostWhenReflectionIsUpdated() {
+        ReflectionService service = new ReflectionService(
+                reflectionRepository, readingSessionRepository, communityPostRepository);
+        Reflection reflection = new Reflection(1L, new ReadingSession(1L, mockUserBook(), 30), "원래 내용");
+        ReflectionTestUtils.setField(reflection, "reflectionId", 88L);
+        CommunityPost post = new CommunityPost(12L, 1L, "고요한 파도", "원래 내용", 88L);
+        given(reflectionRepository.findByReflectionIdAndUserId(88L, 1L)).willReturn(Optional.of(reflection));
+        given(communityPostRepository.findByReflectionId(88L)).willReturn(List.of(post));
+
+        service.update(1L, 88L, new ReflectionUpdateRequest("  수정된 내용  "));
+
+        assertThat(reflection.getContent()).isEqualTo("수정된 내용");
+        assertThat(post.getContent()).isEqualTo("수정된 내용");
+    }
+
+    @Test
     void rejectsUpdateWhenReflectionNotOwnedOrMissing() {
         ReflectionService service = new ReflectionService(reflectionRepository, readingSessionRepository);
         given(reflectionRepository.findByReflectionIdAndUserId(88L, 1L)).willReturn(Optional.empty());
@@ -123,6 +144,23 @@ class ReflectionServiceTest {
         ReflectionDeleteResponse response = service.delete(1L, 88L);
 
         assertThat(response.coverProgress()).isEqualTo(11);
+        verify(reflectionRepository).delete(reflection);
+    }
+
+    @Test
+    void deletesLinkedShelterPostsBeforeDeletingReflection() {
+        ReflectionService service = new ReflectionService(
+                reflectionRepository, readingSessionRepository, communityPostRepository);
+        Reflection reflection = new Reflection(1L, new ReadingSession(1L, mockUserBook(), 30), "삭제될 내용");
+        ReflectionTestUtils.setField(reflection, "reflectionId", 88L);
+        CommunityPost post = new CommunityPost(12L, 1L, "고요한 파도", "삭제될 내용", 88L);
+        given(reflectionRepository.findByReflectionIdAndUserId(88L, 1L)).willReturn(Optional.of(reflection));
+        given(communityPostRepository.findByReflectionId(88L)).willReturn(List.of(post));
+        given(reflectionRepository.countByUserId(1L)).willReturn(11L);
+
+        service.delete(1L, 88L);
+
+        verify(communityPostRepository).deleteAll(List.of(post));
         verify(reflectionRepository).delete(reflection);
     }
 
