@@ -40,12 +40,7 @@ out/
 .DS_Store
 
 ### yaml ###
-src/main/resources/application.yaml
-src/main/resources/application*.yaml
-src/main/resources/application-*.yaml
-src/main/resources/application.yaml
 src/main/resources/application-local.yaml
-src/main/resources/application-prod.yaml
 
 #env
 .env

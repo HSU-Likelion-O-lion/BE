@@ -1,0 +1,21 @@
+# 공통 설정 (모든 환경에서 적용)
+spring:
+  config:
+    import: optional:file:.env[.properties]
+  application:
+    name: olion
+  profiles:
+    active: local          # 기본 프로필. 지정 안 하면 local로 실행됨
+  jpa:
+    open-in-view: false    # 성능/안티패턴 방지 위해 끔 (권장 표준)
+    properties:
+      hibernate:
+        format_sql: true   # 콘솔 SQL을 보기 좋게 정렬
+
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY:}
+      chat:
+        options:
+          model: gpt-4o-mini
+          temperature: 0.7

@@ -26,6 +26,7 @@ import com.likelion.olion.global.common.exception.ErrorCode;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
+import com.likelion.olion.global.ai.AiTextGenerator;
 
 import java.util.Set;
 import java.time.Instant;
@@ -49,23 +50,35 @@ public class ReadingSessionService {
     private final ReadingSessionRepository readingSessionRepository;
     private final ReadingInterruptionRepository readingInterruptionRepository;
     private final UserBookRepository userBookRepository;
+    private final AiTextGenerator aiTextGenerator;
 
     @Autowired
     public ReadingSessionService(
             ReadingSessionRepository readingSessionRepository,
             ReadingInterruptionRepository readingInterruptionRepository,
-            UserBookRepository userBookRepository
+            UserBookRepository userBookRepository,
+            AiTextGenerator aiTextGenerator
     ) {
         this.readingSessionRepository = readingSessionRepository;
         this.readingInterruptionRepository = readingInterruptionRepository;
         this.userBookRepository = userBookRepository;
+        this.aiTextGenerator = aiTextGenerator;
     }
 
     public ReadingSessionService(
             ReadingSessionRepository readingSessionRepository,
             UserBookRepository userBookRepository
     ) {
-        this(readingSessionRepository, null, userBookRepository);
+        this(readingSessionRepository, null, userBookRepository, AiTextGenerator.disabled());
+    }
+
+    public ReadingSessionService(
+            ReadingSessionRepository readingSessionRepository,
+            ReadingInterruptionRepository readingInterruptionRepository,
+            UserBookRepository userBookRepository
+    ) {
+        this(readingSessionRepository, readingInterruptionRepository, userBookRepository,
+                AiTextGenerator.disabled());
     }
 
     @Transactional
@@ -135,7 +148,14 @@ public class ReadingSessionService {
             throw new BusinessException(ErrorCode.CONFLICT);
         }
 
-        session.complete(DEFAULT_AI_QUESTION);
+        String bookTitle = session.getUserBook().getBook().getTitle();
+        String prompt = """
+                독서 세션을 마친 사용자에게 보여줄 사유 질문을 한 문장으로 작성하세요.
+                책 제목: %s
+                질문은 정답을 요구하지 않고, 오늘 읽은 내용과 사용자의 삶을 연결하는 따뜻한 한국어 질문이어야 합니다.
+                """.formatted(bookTitle);
+        String aiQuestion = aiTextGenerator.generate(prompt, DEFAULT_AI_QUESTION);
+        session.complete(aiQuestion);
         return new ReadingSessionCompleteResponse(session.getStatus().name(), session.getAiQuestion());
     }
 

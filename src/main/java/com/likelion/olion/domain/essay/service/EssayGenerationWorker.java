@@ -8,6 +8,7 @@ import com.likelion.olion.domain.essay.repository.EssayRepository;
 import com.likelion.olion.domain.reflection.entity.Reflection;
 import com.likelion.olion.domain.reflection.repository.ReflectionRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -21,17 +22,30 @@ public class EssayGenerationWorker {
     private final EssayChapterRepository essayChapterRepository;
     private final ReflectionRepository reflectionRepository;
     private final EssayEditor essayEditor;
+    private final AiEssayEditor aiEssayEditor;
 
+    @Autowired
     public EssayGenerationWorker(
             EssayRepository essayRepository,
             EssayChapterRepository essayChapterRepository,
             ReflectionRepository reflectionRepository,
             EssayEditor essayEditor
     ) {
+        this(essayRepository, essayChapterRepository, reflectionRepository, essayEditor, null);
+    }
+
+    public EssayGenerationWorker(
+            EssayRepository essayRepository,
+            EssayChapterRepository essayChapterRepository,
+            ReflectionRepository reflectionRepository,
+            EssayEditor essayEditor,
+            AiEssayEditor aiEssayEditor
+    ) {
         this.essayRepository = essayRepository;
         this.essayChapterRepository = essayChapterRepository;
         this.reflectionRepository = reflectionRepository;
         this.essayEditor = essayEditor;
+        this.aiEssayEditor = aiEssayEditor;
     }
 
     @Transactional
@@ -44,7 +58,9 @@ public class EssayGenerationWorker {
         essay.startProcessing();
         try {
             List<Reflection> reflections = reflectionRepository.findByEssay_EssayId(essayId);
-            List<EssayEditor.ChapterDraft> chapters = essayEditor.organize(reflections);
+            List<EssayEditor.ChapterDraft> chapters = aiEssayEditor == null
+                    ? essayEditor.organize(reflections)
+                    : aiEssayEditor.organize(reflections, essayEditor);
 
             int chapterNo = 1;
             for (EssayEditor.ChapterDraft draft : chapters) {
