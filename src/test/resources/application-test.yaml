@@ -10,6 +10,8 @@ spring:
     hibernate:
       ddl-auto: create-drop   # 테스트 시작 시 테이블 생성, 끝나면 삭제
     database-platform: org.hibernate.dialect.H2Dialect
+  flyway:
+    enabled: false
   mail:
     host: localhost   # 테스트에서는 실제 발송 안 함, 빈 생성용 더미 값
 
