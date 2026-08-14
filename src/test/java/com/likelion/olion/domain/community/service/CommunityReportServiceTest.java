@@ -132,7 +132,8 @@ class CommunityReportServiceTest {
         given(communityPostRepository.findByIdForUpdate(200L)).willReturn(Optional.of(post));
         given(communityPostReportRepository.existsByPostPostIdAndUserId(200L, 1L)).willReturn(false);
         given(communityPostReportRepository.saveAndFlush(any(CommunityPostReport.class)))
-                .willThrow(new DataIntegrityViolationException("duplicate"));
+                .willThrow(new DataIntegrityViolationException(
+                        "duplicate key violates uk_community_report_post_user"));
 
         assertThatThrownBy(() -> service.reportPost(
                 1L, 200L, new CommunityReportRequest(null)))
