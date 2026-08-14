@@ -88,7 +88,7 @@ public class BookCurationService {
                 책 설명: %s
                 공감한 감정 카드 번호: %s
                 """.formatted(book.getTitle(), book.getAuthor(), limit(book.getDescription(), 800), likedCardIds);
-        String curationText = aiTextGenerator.generate(prompt, fallback);
+        String curationText = aiTextGenerator.generate(diagnosis.getUserId(), "book-curation", prompt, fallback);
         BookCuration curation = curationRepository.save(
                 new BookCuration(diagnosis, book, curationText));
         return toResponse(curation);

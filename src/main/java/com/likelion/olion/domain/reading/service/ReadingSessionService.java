@@ -177,7 +177,7 @@ public class ReadingSessionService {
                 책 제목: %s
                 질문은 정답을 요구하지 않고, 오늘 읽은 내용과 사용자의 삶을 연결하는 따뜻한 한국어 질문이어야 합니다.
                 """.formatted(bookTitle);
-        String aiQuestion = aiTextGenerator.generate(prompt, DEFAULT_AI_QUESTION);
+        String aiQuestion = aiTextGenerator.generate(userId, "reading-question", prompt, DEFAULT_AI_QUESTION);
         session.complete(aiQuestion, completedAt);
         return new ReadingSessionCompleteResponse(session.getStatus().name(), session.getAiQuestion());
     }
