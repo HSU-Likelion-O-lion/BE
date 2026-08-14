@@ -10,21 +10,30 @@ import com.likelion.olion.domain.emotion.entity.EmotionDiagnosisRecommendation;
 import com.likelion.olion.domain.emotion.repository.DiagnosisSwipeRepository;
 import com.likelion.olion.domain.emotion.repository.EmotionDiagnosisRecommendationRepository;
 import com.likelion.olion.domain.emotion.repository.EmotionDiagnosisRepository;
+import com.likelion.olion.domain.user.entity.SubscriptionPlan;
+import com.likelion.olion.domain.user.entity.User;
+import com.likelion.olion.domain.user.repository.UserRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.stream.IntStream;
 
 @Service
 public class EmotionDiagnosisService {
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
+
     private final EmotionDiagnosisRepository diagnosisRepository;
     private final DiagnosisSwipeRepository swipeRepository;
     private final BookRepository bookRepository;
     private final EmotionDiagnosisRecommendationRepository recommendationRepository;
     private final EmotionBookRecommendationService recommendationService;
+    private final UserRepository userRepository;
 
     @Autowired
     public EmotionDiagnosisService(
@@ -32,23 +41,26 @@ public class EmotionDiagnosisService {
             DiagnosisSwipeRepository swipeRepository,
             BookRepository bookRepository,
             EmotionDiagnosisRecommendationRepository recommendationRepository,
-            EmotionBookRecommendationService recommendationService
+            EmotionBookRecommendationService recommendationService,
+            UserRepository userRepository
     ) {
         this.diagnosisRepository = diagnosisRepository;
         this.swipeRepository = swipeRepository;
         this.bookRepository = bookRepository;
         this.recommendationRepository = recommendationRepository;
         this.recommendationService = recommendationService;
+        this.userRepository = userRepository;
     }
 
     public EmotionDiagnosisService(
             EmotionDiagnosisRepository diagnosisRepository,
             DiagnosisSwipeRepository swipeRepository,
             BookRepository bookRepository,
-            EmotionDiagnosisRecommendationRepository recommendationRepository
+            EmotionDiagnosisRecommendationRepository recommendationRepository,
+            UserRepository userRepository
     ) {
         this(diagnosisRepository, swipeRepository, bookRepository,
-                recommendationRepository, new EmotionBookRecommendationService());
+                recommendationRepository, new EmotionBookRecommendationService(), userRepository);
     }
 
     @Transactional
@@ -58,6 +70,10 @@ public class EmotionDiagnosisService {
                 || swipes.stream().map(EmotionDiagnosisRequest.Swipe::cardId).distinct().count() != 5
                 || swipes.stream().anyMatch(s -> !isKnownCard(s.cardId()))) {
             return Submission.invalid();
+        }
+
+        if (isOverDailyLimit(userId)) {
+            return Submission.limitExceeded();
         }
 
         EmotionDiagnosis diagnosis = diagnosisRepository.save(new EmotionDiagnosis(userId));
@@ -122,6 +138,21 @@ public class EmotionDiagnosisService {
         return cardId >= 1 && cardId <= 12;
     }
 
+    private boolean isOverDailyLimit(Long userId) {
+        SubscriptionPlan plan = userRepository.findById(userId)
+                .map(User::getPlan)
+                .orElse(SubscriptionPlan.BASIC);
+        int limit = plan.dailyDiagnosisLimit();
+        if (limit == Integer.MAX_VALUE) {
+            return false;
+        }
+
+        ZonedDateTime startOfToday = ZonedDateTime.now(KST).toLocalDate().atStartOfDay(KST);
+        Instant start = startOfToday.toInstant();
+        Instant end = startOfToday.plusDays(1).toInstant();
+        return diagnosisRepository.countByUserIdAndCreatedAtBetween(userId, start, end) >= limit;
+    }
+
     public record Submission(HttpStatus status, String code, String message, EmotionDiagnosisResponse data) {
         static Submission success(EmotionDiagnosisResponse data) {
             return new Submission(HttpStatus.CREATED, "SUCCESS", "감정 진단이 완료되었습니다.", data);
@@ -134,6 +165,10 @@ public class EmotionDiagnosisService {
         }
         static Submission invalid() {
             return new Submission(HttpStatus.BAD_REQUEST, "BOOK_400_1", "스와이프 결과가 5개가 아닙니다.", null);
+        }
+        static Submission limitExceeded() {
+            return new Submission(HttpStatus.TOO_MANY_REQUESTS, "PLAN_429_1",
+                    "오늘의 감정 진단 횟수를 모두 사용했어요. 구독 등급을 업그레이드하면 더 많이 이용할 수 있어요.", null);
         }
     }
 }

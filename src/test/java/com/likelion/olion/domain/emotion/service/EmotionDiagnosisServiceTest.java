@@ -9,13 +9,20 @@ import com.likelion.olion.domain.emotion.entity.EmotionDiagnosisRecommendation;
 import com.likelion.olion.domain.emotion.repository.DiagnosisSwipeRepository;
 import com.likelion.olion.domain.emotion.repository.EmotionDiagnosisRecommendationRepository;
 import com.likelion.olion.domain.emotion.repository.EmotionDiagnosisRepository;
+import com.likelion.olion.domain.user.entity.SubscriptionPlan;
+import com.likelion.olion.domain.user.entity.User;
+import com.likelion.olion.domain.user.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -29,9 +36,17 @@ class EmotionDiagnosisServiceTest {
             mock(EmotionDiagnosisRecommendationRepository.class);
     private final EmotionBookRecommendationService recommendationService =
             new EmotionBookRecommendationService();
+    private final UserRepository userRepository = mock(UserRepository.class);
     private final EmotionDiagnosisService service = new EmotionDiagnosisService(
-            diagnosisRepository, swipeRepository, bookRepository, recommendationRepository, recommendationService
+            diagnosisRepository, swipeRepository, bookRepository, recommendationRepository,
+            recommendationService, userRepository
     );
+
+    private User userWithPlan(SubscriptionPlan plan) {
+        User user = User.builder().email("test@example.com").password("encoded").nickname("닉네임").build();
+        ReflectionTestUtils.setField(user, "plan", plan);
+        return user;
+    }
 
     @Test
     void 스와이프_결과가_5개가_아니면_400_결과를_반환한다() {
@@ -130,5 +145,45 @@ class EmotionDiagnosisServiceTest {
         assertThat(result.data().recommendedBooks())
                 .extracting(EmotionDiagnosisResponse.RecommendedBook::bookId)
                 .containsExactly(1L, 2L, 3L);
+    }
+
+    @Test
+    void BASIC_등급이_오늘_1회_진단했으면_추가_진단이_429로_거절된다() {
+        when(userRepository.findById(7L)).thenReturn(Optional.of(userWithPlan(SubscriptionPlan.BASIC)));
+        when(diagnosisRepository.countByUserIdAndCreatedAtBetween(anyLong(), any(Instant.class), any(Instant.class)))
+                .thenReturn(1L);
+        EmotionDiagnosisRequest request = new EmotionDiagnosisRequest(List.of(
+                new EmotionDiagnosisRequest.Swipe(1, true),
+                new EmotionDiagnosisRequest.Swipe(2, false),
+                new EmotionDiagnosisRequest.Swipe(3, false),
+                new EmotionDiagnosisRequest.Swipe(4, false),
+                new EmotionDiagnosisRequest.Swipe(5, false)
+        ));
+
+        EmotionDiagnosisService.Submission result = service.submit(7L, request);
+
+        assertThat(result.status().value()).isEqualTo(429);
+        assertThat(result.code()).isEqualTo("PLAN_429_1");
+        verify(diagnosisRepository, never()).save(any());
+    }
+
+    @Test
+    void PRO_등급은_진단_횟수_제한이_없다() {
+        when(userRepository.findById(7L)).thenReturn(Optional.of(userWithPlan(SubscriptionPlan.PRO)));
+        when(diagnosisRepository.countByUserIdAndCreatedAtBetween(anyLong(), any(Instant.class), any(Instant.class)))
+                .thenReturn(100L);
+        when(diagnosisRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        EmotionDiagnosisRequest request = new EmotionDiagnosisRequest(List.of(
+                new EmotionDiagnosisRequest.Swipe(1, false),
+                new EmotionDiagnosisRequest.Swipe(2, false),
+                new EmotionDiagnosisRequest.Swipe(3, false),
+                new EmotionDiagnosisRequest.Swipe(4, false),
+                new EmotionDiagnosisRequest.Swipe(5, false)
+        ));
+
+        EmotionDiagnosisService.Submission result = service.submit(7L, request);
+
+        assertThat(result.status().value()).isEqualTo(200);
+        assertThat(result.code()).isEqualTo("SUCCESS_EMPTY");
     }
 }
