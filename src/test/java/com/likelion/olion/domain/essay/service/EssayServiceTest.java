@@ -18,6 +18,8 @@ import com.likelion.olion.domain.essay.repository.EssayRepository;
 import com.likelion.olion.domain.reading.entity.ReadingSession;
 import com.likelion.olion.domain.reflection.entity.Reflection;
 import com.likelion.olion.domain.reflection.repository.ReflectionRepository;
+import com.likelion.olion.domain.user.entity.User;
+import com.likelion.olion.domain.user.repository.UserRepository;
 import com.likelion.olion.global.common.exception.BusinessException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -49,13 +51,16 @@ class EssayServiceTest {
     private ApplicationEventPublisher eventPublisher;
     @Mock
     private EssayPdfGenerator essayPdfGenerator;
+    @Mock
+    private UserRepository userRepository;
 
     private EssayService service;
 
     @BeforeEach
     void setUp() {
         service = new EssayService(
-                essayRepository, essayChapterRepository, reflectionRepository, eventPublisher, essayPdfGenerator);
+                essayRepository, essayChapterRepository, reflectionRepository, eventPublisher,
+                essayPdfGenerator, userRepository);
     }
 
     @Test
@@ -68,12 +73,15 @@ class EssayServiceTest {
         ReflectionTestUtils.setField(saved, "essayId", 7L);
 
         given(reflectionRepository.findByReflectionIdInAndUserId(ids, 1L)).willReturn(reflections);
+        given(userRepository.findById(1L)).willReturn(Optional.of(new User("reader@example.com", "encoded", "책읽는사자")));
         given(essayRepository.saveAndFlush(any(Essay.class))).willReturn(saved);
 
         EssayCreateResponse response = service.create(1L, new EssayCreateRequest(ids));
 
         assertThat(response.essayId()).isEqualTo(7L);
         assertThat(response.jobStatus()).isEqualTo(EssayStatus.QUEUED);
+        verify(essayRepository).saveAndFlush(org.mockito.ArgumentMatchers.argThat(
+                essay -> "책읽는사자".equals(essay.getAuthorName())));
         reflections.forEach(reflection -> assertThat(reflection.getEssay()).isEqualTo(saved));
         verify(eventPublisher).publishEvent(new EssayGenerationRequestedEvent(7L));
     }
