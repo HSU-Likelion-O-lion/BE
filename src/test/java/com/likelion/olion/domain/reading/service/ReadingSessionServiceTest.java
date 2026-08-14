@@ -19,19 +19,27 @@ import com.likelion.olion.domain.reading.entity.ReadingInterruption;
 import com.likelion.olion.domain.reading.entity.ReadingInterruptionReason;
 import com.likelion.olion.domain.reading.repository.ReadingSessionRepository;
 import com.likelion.olion.domain.reading.repository.ReadingInterruptionRepository;
+import com.likelion.olion.domain.user.entity.SubscriptionPlan;
+import com.likelion.olion.domain.user.entity.User;
+import com.likelion.olion.domain.user.repository.UserRepository;
+import com.likelion.olion.global.ai.AiTextGenerator;
 import com.likelion.olion.global.common.exception.BusinessException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.Clock;
 import java.util.Optional;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -46,7 +54,16 @@ class ReadingSessionServiceTest {
     private UserBookRepository userBookRepository;
 
     @Mock
+    private UserRepository userRepository;
+
+    @Mock
     private Book book;
+
+    private User userWithPlan(SubscriptionPlan plan) {
+        User user = User.builder().email("test@example.com").password("encoded").nickname("닉네임").build();
+        ReflectionTestUtils.setField(user, "plan", plan);
+        return user;
+    }
 
     @Test
     void startsSessionWithAllowedTargetMinutes() {
@@ -320,6 +337,41 @@ class ReadingSessionServiceTest {
         assertThat(response.byWeekday()).hasSize(1);
         assertThat(response.byHour()).hasSize(1);
         assertThat(response.byWeekday().get(0).focusedMinutes()).isEqualTo(30);
+    }
+
+    @Test
+    void basicPlanUsersOnlySeeLastSevenDaysOfStatistics() {
+        ReadingSessionService service = new ReadingSessionService(
+                readingSessionRepository, readingInterruptionRepository, userBookRepository,
+                AiTextGenerator.disabled(), Clock.systemUTC(), userRepository);
+        given(userRepository.findById(1L)).willReturn(Optional.of(userWithPlan(SubscriptionPlan.BASIC)));
+        given(readingSessionRepository.findByUserIdAndStatusAndStartedAtAfter(
+                anyLong(), any(ReadingSessionStatus.class), any())).willReturn(List.of());
+        given(readingInterruptionRepository.findBySessionUserIdAndOccurredAtAfter(anyLong(), any()))
+                .willReturn(List.of());
+
+        service.getStatistics(1L);
+
+        verify(readingSessionRepository, never()).findByUserIdAndStatus(anyLong(), any());
+        verify(readingInterruptionRepository, never()).findBySessionUserId(anyLong());
+    }
+
+    @Test
+    void proPlanUsersSeeFullHistoryStatistics() {
+        ReadingSessionService service = new ReadingSessionService(
+                readingSessionRepository, readingInterruptionRepository, userBookRepository,
+                AiTextGenerator.disabled(), Clock.systemUTC(), userRepository);
+        given(userRepository.findById(1L)).willReturn(Optional.of(userWithPlan(SubscriptionPlan.PRO)));
+        given(readingSessionRepository.findByUserIdAndStatus(1L, ReadingSessionStatus.COMPLETED))
+                .willReturn(List.of());
+        given(readingInterruptionRepository.findBySessionUserId(1L)).willReturn(List.of());
+
+        service.getStatistics(1L);
+
+        verify(readingSessionRepository, never())
+                .findByUserIdAndStatusAndStartedAtAfter(anyLong(), any(), any());
+        verify(readingInterruptionRepository, never())
+                .findBySessionUserIdAndOccurredAtAfter(anyLong(), any());
     }
 
     @Test

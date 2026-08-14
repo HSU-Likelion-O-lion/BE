@@ -21,6 +21,9 @@ import com.likelion.olion.domain.reading.entity.ReadingInterruptionReason;
 import com.likelion.olion.domain.reading.entity.ReadingSessionStatus;
 import com.likelion.olion.domain.reading.repository.ReadingInterruptionRepository;
 import com.likelion.olion.domain.reading.repository.ReadingSessionRepository;
+import com.likelion.olion.domain.user.entity.SubscriptionPlan;
+import com.likelion.olion.domain.user.entity.User;
+import com.likelion.olion.domain.user.repository.UserRepository;
 import com.likelion.olion.global.common.exception.BusinessException;
 import com.likelion.olion.global.common.exception.ErrorCode;
 import org.springframework.stereotype.Service;
@@ -29,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.likelion.olion.global.ai.AiTextGenerator;
 
 import java.util.Set;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.Clock;
 import java.time.DayOfWeek;
@@ -52,19 +56,22 @@ public class ReadingSessionService {
     private final UserBookRepository userBookRepository;
     private final AiTextGenerator aiTextGenerator;
     private final Clock clock;
+    private final UserRepository userRepository;
 
     public ReadingSessionService(
             ReadingSessionRepository readingSessionRepository,
             ReadingInterruptionRepository readingInterruptionRepository,
             UserBookRepository userBookRepository,
             AiTextGenerator aiTextGenerator,
-            Clock clock
+            Clock clock,
+            UserRepository userRepository
     ) {
         this.readingSessionRepository = readingSessionRepository;
         this.readingInterruptionRepository = readingInterruptionRepository;
         this.userBookRepository = userBookRepository;
         this.aiTextGenerator = aiTextGenerator;
         this.clock = clock;
+        this.userRepository = userRepository;
     }
 
     @Autowired
@@ -72,17 +79,19 @@ public class ReadingSessionService {
             ReadingSessionRepository readingSessionRepository,
             ReadingInterruptionRepository readingInterruptionRepository,
             UserBookRepository userBookRepository,
-            AiTextGenerator aiTextGenerator
+            AiTextGenerator aiTextGenerator,
+            UserRepository userRepository
     ) {
         this(readingSessionRepository, readingInterruptionRepository, userBookRepository,
-                aiTextGenerator, Clock.systemUTC());
+                aiTextGenerator, Clock.systemUTC(), userRepository);
     }
 
     public ReadingSessionService(
             ReadingSessionRepository readingSessionRepository,
             UserBookRepository userBookRepository
     ) {
-        this(readingSessionRepository, null, userBookRepository, AiTextGenerator.disabled(), Clock.systemUTC());
+        this(readingSessionRepository, null, userBookRepository, AiTextGenerator.disabled(),
+                Clock.systemUTC(), null);
     }
 
     public ReadingSessionService(
@@ -91,7 +100,7 @@ public class ReadingSessionService {
             UserBookRepository userBookRepository
     ) {
         this(readingSessionRepository, readingInterruptionRepository, userBookRepository,
-                AiTextGenerator.disabled(), Clock.systemUTC());
+                AiTextGenerator.disabled(), Clock.systemUTC(), null);
     }
 
     @Transactional
@@ -237,7 +246,10 @@ public class ReadingSessionService {
     }
 
     public ReadingStatisticsResponse getStatistics(Long userId) {
-        List<ReadingInterruption> interruptions = readingInterruptionRepository.findBySessionUserId(userId);
+        Instant since = statisticsSince(userId);
+        List<ReadingInterruption> interruptions = since == null
+                ? readingInterruptionRepository.findBySessionUserId(userId)
+                : readingInterruptionRepository.findBySessionUserIdAndOccurredAtAfter(userId, since);
         int continueCount = (int) interruptions.stream()
                 .filter(interruption -> interruption.getReason() == ReadingInterruptionReason.CONTINUE)
                 .count();
@@ -247,8 +259,11 @@ public class ReadingSessionService {
 
         Map<DayOfWeek, Integer> weekdayMinutes = new EnumMap<>(DayOfWeek.class);
         Map<Integer, Integer> hourMinutes = new TreeMap<>();
-        readingSessionRepository.findByUserIdAndStatus(userId, ReadingSessionStatus.COMPLETED)
-                .forEach(session -> {
+        List<ReadingSession> completedSessions = since == null
+                ? readingSessionRepository.findByUserIdAndStatus(userId, ReadingSessionStatus.COMPLETED)
+                : readingSessionRepository.findByUserIdAndStatusAndStartedAtAfter(
+                        userId, ReadingSessionStatus.COMPLETED, since);
+        completedSessions.forEach(session -> {
                     int minutes = (int) Math.ceil(session.calculateFocusedSeconds(session.getCompletedAt() == null
                             ? session.getStartedAt() : session.getCompletedAt()) / 60.0);
                     DayOfWeek weekday = session.getStartedAt().atZone(java.time.ZoneId.systemDefault()).getDayOfWeek();
@@ -264,6 +279,14 @@ public class ReadingSessionService {
                 .map(entry -> new ReadingStatisticsResponse.HourStat(entry.getKey(), entry.getValue()))
                 .toList();
         return new ReadingStatisticsResponse(continueCount, ebookSwitchCount, byWeekday, byHour);
+    }
+
+    private Instant statisticsSince(Long userId) {
+        if (userRepository == null) {
+            return null;
+        }
+        SubscriptionPlan plan = userRepository.findById(userId).map(User::getPlan).orElse(null);
+        return plan == SubscriptionPlan.BASIC ? Instant.now(clock).minus(Duration.ofDays(7)) : null;
     }
 
     public StreakResponse getStreaks(Long userId) {

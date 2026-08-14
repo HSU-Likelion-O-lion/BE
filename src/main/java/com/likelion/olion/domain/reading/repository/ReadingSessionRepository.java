@@ -4,6 +4,7 @@ import com.likelion.olion.domain.reading.entity.ReadingSession;
 import com.likelion.olion.domain.reading.entity.ReadingSessionStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.time.Instant;
 import java.util.Optional;
 import java.util.List;
 
@@ -16,4 +17,7 @@ public interface ReadingSessionRepository extends JpaRepository<ReadingSession, 
     Optional<ReadingSession> findBySessionIdAndUserId(Long sessionId, Long userId);
 
     List<ReadingSession> findByUserIdAndStatus(Long userId, ReadingSessionStatus status);
+
+    List<ReadingSession> findByUserIdAndStatusAndStartedAtAfter(
+            Long userId, ReadingSessionStatus status, Instant since);
 }
