@@ -15,6 +15,8 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class InspirationCapsuleService {
@@ -78,7 +80,7 @@ public class InspirationCapsuleService {
         if (existing.isPresent()) {
             return toResponse(existing.get());
         }
-        Quote quote = QUOTES.get(random.nextInt(QUOTES.size()));
+        Quote quote = pickQuote(userId);
         InspirationCapsule capsule = new InspirationCapsule(userId, quote.text(), quote.bookTitle(), today);
         try {
             inspirationCapsuleRepository.saveAndFlush(capsule);
@@ -94,6 +96,19 @@ public class InspirationCapsuleService {
     public InspirationCapsuleHistoryResponse getHistory(Long userId) {
         return InspirationCapsuleHistoryResponse.from(
                 inspirationCapsuleRepository.findByUserIdOrderByOpenedDateDesc(userId));
+    }
+
+    private Quote pickQuote(Long userId) {
+        Set<String> usedTexts = inspirationCapsuleRepository.findByUserIdOrderByOpenedDateDesc(userId).stream()
+                .map(InspirationCapsule::getQuoteText)
+                .collect(Collectors.toSet());
+        List<Quote> candidates = QUOTES.stream()
+                .filter(quote -> !usedTexts.contains(quote.text()))
+                .toList();
+        if (candidates.isEmpty()) {
+            candidates = QUOTES;
+        }
+        return candidates.get(random.nextInt(candidates.size()));
     }
 
     LocalDate today() {

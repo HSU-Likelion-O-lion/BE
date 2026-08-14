@@ -12,8 +12,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -94,6 +97,33 @@ class InspirationCapsuleServiceTest {
 
         assertThat(response.quoteText()).isEqualTo("삶이 그대를 속일지라도...");
         assertThat(response.bookTitle()).isEqualTo("안나 카레니나");
+    }
+
+    @Test
+    void cyclesThroughAllQuotesWithoutRepeatingThenResets() {
+        InspirationCapsuleService service = new InspirationCapsuleService(inspirationCapsuleRepository);
+        List<InspirationCapsule> history = new ArrayList<>();
+        given(inspirationCapsuleRepository.findByUserIdAndOpenedDate(eq(1L), any(LocalDate.class)))
+                .willReturn(Optional.empty());
+        given(inspirationCapsuleRepository.findByUserIdOrderByOpenedDateDesc(1L))
+                .willAnswer(invocation -> new ArrayList<>(history));
+        given(inspirationCapsuleRepository.saveAndFlush(any(InspirationCapsule.class)))
+                .willAnswer(invocation -> {
+                    InspirationCapsule saved = invocation.getArgument(0);
+                    history.add(saved);
+                    return saved;
+                });
+
+        Set<String> seenInFirstCycle = new HashSet<>();
+        for (int i = 0; i < 30; i++) {
+            InspirationCapsuleOpenResponse response = service.open(1L);
+            assertThat(seenInFirstCycle).doesNotContain(response.quoteText());
+            seenInFirstCycle.add(response.quoteText());
+        }
+        assertThat(seenInFirstCycle).hasSize(30);
+
+        InspirationCapsuleOpenResponse afterReset = service.open(1L);
+        assertThat(afterReset.quoteText()).isNotBlank();
     }
 
     @Test
