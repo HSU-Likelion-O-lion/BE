@@ -49,7 +49,10 @@ public class CommunityReportService {
             report = communityPostReportRepository.saveAndFlush(new CommunityPostReport(
                     post, userId, normalizeReason(request.reason())));
         } catch (DataIntegrityViolationException exception) {
-            throw duplicateReportException();
+            if (isDuplicateReportViolation(exception)) {
+                throw duplicateReportException();
+            }
+            throw exception;
         }
 
         long reportCount = communityPostReportRepository.countByPostPostId(reportPostId);
@@ -68,5 +71,17 @@ public class CommunityReportService {
 
     private BusinessException duplicateReportException() {
         return new BusinessException(ErrorCode.CONFLICT, "이미 신고한 게시글입니다.");
+    }
+
+    private boolean isDuplicateReportViolation(DataIntegrityViolationException exception) {
+        Throwable cause = exception;
+        while (cause != null) {
+            String message = cause.getMessage();
+            if (message != null && message.contains("uk_community_report_post_user")) {
+                return true;
+            }
+            cause = cause.getCause();
+        }
+        return false;
     }
 }
