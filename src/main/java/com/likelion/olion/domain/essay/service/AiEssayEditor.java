@@ -3,6 +3,8 @@ package com.likelion.olion.domain.essay.service;
 import com.likelion.olion.domain.reflection.entity.Reflection;
 import com.likelion.olion.global.ai.AiTextGenerator;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -18,6 +20,7 @@ public class AiEssayEditor {
         this.aiTextGenerator = aiTextGenerator;
     }
 
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public List<EssayEditor.ChapterDraft> organize(
             List<Reflection> reflections,
             EssayEditor fallbackEditor

@@ -31,6 +31,9 @@ public class EssayPdfGenerator {
 
             document.add(new Paragraph(
                     detail.title() != null ? detail.title() : "제목 없음", titleFont));
+            if (detail.authorName() != null && !detail.authorName().isBlank()) {
+                document.add(new Paragraph(detail.authorName(), bodyFont));
+            }
             document.add(Chunk.NEWLINE);
 
             for (EssayDetailResponse.Chapter chapter : detail.chapters()) {

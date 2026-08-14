@@ -16,9 +16,12 @@ import com.likelion.olion.domain.essay.repository.EssayChapterRepository;
 import com.likelion.olion.domain.essay.repository.EssayRepository;
 import com.likelion.olion.domain.reflection.entity.Reflection;
 import com.likelion.olion.domain.reflection.repository.ReflectionRepository;
+import com.likelion.olion.domain.user.entity.User;
+import com.likelion.olion.domain.user.repository.UserRepository;
 import com.likelion.olion.global.common.exception.BusinessException;
 import com.likelion.olion.global.common.exception.ErrorCode;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,6 +37,24 @@ public class EssayService {
     private final ReflectionRepository reflectionRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final EssayPdfGenerator essayPdfGenerator;
+    private final UserRepository userRepository;
+
+    @Autowired
+    public EssayService(
+            EssayRepository essayRepository,
+            EssayChapterRepository essayChapterRepository,
+            ReflectionRepository reflectionRepository,
+            ApplicationEventPublisher eventPublisher,
+            EssayPdfGenerator essayPdfGenerator,
+            UserRepository userRepository
+    ) {
+        this.essayRepository = essayRepository;
+        this.essayChapterRepository = essayChapterRepository;
+        this.reflectionRepository = reflectionRepository;
+        this.eventPublisher = eventPublisher;
+        this.essayPdfGenerator = essayPdfGenerator;
+        this.userRepository = userRepository;
+    }
 
     public EssayService(
             EssayRepository essayRepository,
@@ -42,11 +63,8 @@ public class EssayService {
             ApplicationEventPublisher eventPublisher,
             EssayPdfGenerator essayPdfGenerator
     ) {
-        this.essayRepository = essayRepository;
-        this.essayChapterRepository = essayChapterRepository;
-        this.reflectionRepository = reflectionRepository;
-        this.eventPublisher = eventPublisher;
-        this.essayPdfGenerator = essayPdfGenerator;
+        this(essayRepository, essayChapterRepository, reflectionRepository, eventPublisher,
+                essayPdfGenerator, null);
     }
 
     @Transactional
@@ -58,7 +76,12 @@ public class EssayService {
                     ErrorCode.INVALID_INPUT, "선택한 사유 중 존재하지 않거나 본인 소유가 아닌 항목이 있습니다.");
         }
 
-        Essay essay = essayRepository.saveAndFlush(new Essay(userId));
+        String authorName = userRepository == null
+                ? String.valueOf(userId)
+                : userRepository.findById(userId)
+                .map(User::getNickname)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "사용자를 찾을 수 없습니다."));
+        Essay essay = essayRepository.saveAndFlush(new Essay(userId, authorName));
         reflections.forEach(reflection -> reflection.assignToEssay(essay));
 
         eventPublisher.publishEvent(new EssayGenerationRequestedEvent(essay.getEssayId()));

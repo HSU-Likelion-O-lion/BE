@@ -4,6 +4,8 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.logging.Logger;
 
@@ -31,6 +33,7 @@ public class AiTextGenerator {
         return new AiTextGenerator((ChatClient) null);
     }
 
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public String generate(String prompt, String fallback) {
         if (chatClient == null) {
             return fallback;

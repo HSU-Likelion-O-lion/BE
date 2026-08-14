@@ -23,6 +23,9 @@ public class Essay {
 
     private String title;
 
+    @Column(length = 50)
+    private String authorName;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private EssayStatus status;
@@ -36,7 +39,12 @@ public class Essay {
     }
 
     public Essay(Long userId) {
+        this(userId, null);
+    }
+
+    public Essay(Long userId, String authorName) {
         this.userId = userId;
+        this.authorName = authorName;
         this.status = EssayStatus.QUEUED;
         this.createdAt = Instant.now();
     }
@@ -71,6 +79,7 @@ public class Essay {
     public Long getEssayId() { return essayId; }
     public Long getUserId() { return userId; }
     public String getTitle() { return title; }
+    public String getAuthorName() { return authorName; }
     public EssayStatus getStatus() { return status; }
     public Instant getPublishedAt() { return publishedAt; }
     public Instant getCreatedAt() { return createdAt; }
