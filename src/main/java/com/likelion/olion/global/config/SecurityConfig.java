@@ -31,6 +31,7 @@ public class SecurityConfig {
             "/api/auth/**",
             "/api/users/check-email",
             "/api/users/check-nickname",
+            "/api/public/**",
             "/images/**",
             "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html"
     };

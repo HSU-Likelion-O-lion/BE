@@ -39,7 +39,8 @@ public class CommunityReportService {
         if (post.isBlinded()) {
             throw new BusinessException(ErrorCode.CONFLICT, "블라인드 처리된 게시글입니다.");
         }
-        if (communityPostReportRepository.existsByPostPostIdAndUserId(postId, userId)) {
+        Long reportPostId = post.getPostId() == null ? postId : post.getPostId();
+        if (communityPostReportRepository.existsByPostPostIdAndUserId(reportPostId, userId)) {
             throw duplicateReportException();
         }
 
@@ -51,7 +52,7 @@ public class CommunityReportService {
             throw duplicateReportException();
         }
 
-        long reportCount = communityPostReportRepository.countByPostPostId(postId);
+        long reportCount = communityPostReportRepository.countByPostPostId(reportPostId);
         CommunityReportStatus status = reportCount > REVIEW_THRESHOLD
                 ? CommunityReportStatus.BLINDED
                 : CommunityReportStatus.NORMAL;
