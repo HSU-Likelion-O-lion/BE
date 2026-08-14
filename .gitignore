@@ -40,14 +40,12 @@ out/
 .DS_Store
 
 ### yaml ###
-src/main/resources/application.yaml
-src/main/resources/application*.yaml
-src/main/resources/application-*.yaml
-src/main/resources/application.yml
 src/main/resources/application-local.yaml
-src/main/resources/application-prod.yaml
 
 #env
 .env
 
 .claude
+
+# 로컬 파일 업로드 저장소 (프로필 이미지 등)
+uploads/

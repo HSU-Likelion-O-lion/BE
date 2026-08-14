@@ -45,3 +45,8 @@
 > Type: commit title
 >
 > ex. `Feat: 로그인 기능 추가`
+
+## 운영 설정
+- 운영 CORS는 `APP_CORS_ALLOWED_ORIGINS`에 쉼표로 구분한 정확한 오리진을 지정합니다.
+- 고객지원, 이용약관, 개인정보처리방침은 `PUBLIC_SUPPORT_URL`, `PUBLIC_TERMS_URL`, `PUBLIC_PRIVACY_POLICY_URL`로 프론트 공개 페이지 주소를 지정합니다.
+- 운영 DB는 `ddl-auto: validate`와 Flyway를 사용합니다. 기존 DB는 최초 배포 시 baseline 후 `src/main/resources/db/migration`의 버전을 순서대로 적용합니다.
