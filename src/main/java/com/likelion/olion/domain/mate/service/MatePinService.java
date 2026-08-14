@@ -7,6 +7,9 @@ import com.likelion.olion.domain.mate.dto.MatePinResponse;
 import com.likelion.olion.domain.mate.dto.MatePinSaveResponse;
 import com.likelion.olion.domain.mate.entity.MatePin;
 import com.likelion.olion.domain.mate.repository.MatePinRepository;
+import com.likelion.olion.domain.user.entity.SubscriptionPlan;
+import com.likelion.olion.domain.user.entity.User;
+import com.likelion.olion.domain.user.repository.UserRepository;
 import com.likelion.olion.global.common.exception.BusinessException;
 import com.likelion.olion.global.common.exception.ErrorCode;
 import org.springframework.stereotype.Service;
@@ -15,14 +18,18 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional(readOnly = true)
 public class MatePinService {
-    private static final int MAX_PIN_COUNT = 5;
-
     private final MatePinRepository matePinRepository;
     private final UserBookRepository userBookRepository;
+    private final UserRepository userRepository;
 
-    public MatePinService(MatePinRepository matePinRepository, UserBookRepository userBookRepository) {
+    public MatePinService(
+            MatePinRepository matePinRepository,
+            UserBookRepository userBookRepository,
+            UserRepository userRepository
+    ) {
         this.matePinRepository = matePinRepository;
         this.userBookRepository = userBookRepository;
+        this.userRepository = userRepository;
     }
 
     public MatePinResponse getPins(Long userId) {
@@ -34,12 +41,13 @@ public class MatePinService {
         UserBook userBook = userBookRepository.findByUserBookIdAndUserId(request.userBookId(), userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
 
+        int maxPinCount = maxPinCount(userId);
         if (matePinRepository.existsByUserIdAndUserBookUserBookId(userId, request.userBookId())
-                || matePinRepository.countByUserId(userId) >= MAX_PIN_COUNT) {
+                || matePinRepository.countByUserId(userId) >= maxPinCount) {
             throw new BusinessException(ErrorCode.CONFLICT);
         }
 
-        int pinnedOrder = findNextOrder(userId);
+        int pinnedOrder = findNextOrder(userId, maxPinCount);
         matePinRepository.save(new MatePin(userId, userBook, pinnedOrder));
         return new MatePinSaveResponse(pinnedOrder);
     }
@@ -51,10 +59,17 @@ public class MatePinService {
         matePinRepository.delete(pin);
     }
 
-    private int findNextOrder(Long userId) {
+    private int maxPinCount(Long userId) {
+        return userRepository.findById(userId)
+                .map(User::getPlan)
+                .orElse(SubscriptionPlan.BASIC)
+                .maxMatePinCount();
+    }
+
+    private int findNextOrder(Long userId, int maxPinCount) {
         return matePinRepository.findByUserIdOrderByPinnedOrderAsc(userId).stream()
                 .mapToInt(MatePin::getPinnedOrder)
-                .filter(order -> order > 0 && order <= MAX_PIN_COUNT)
+                .filter(order -> order > 0 && order <= maxPinCount)
                 .sorted()
                 .reduce(1, (next, order) -> next == order ? next + 1 : next);
     }
