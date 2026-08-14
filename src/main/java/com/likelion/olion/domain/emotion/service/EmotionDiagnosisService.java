@@ -11,6 +11,7 @@ import com.likelion.olion.domain.emotion.repository.DiagnosisSwipeRepository;
 import com.likelion.olion.domain.emotion.repository.EmotionDiagnosisRecommendationRepository;
 import com.likelion.olion.domain.emotion.repository.EmotionDiagnosisRepository;
 import org.springframework.http.HttpStatus;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +24,22 @@ public class EmotionDiagnosisService {
     private final DiagnosisSwipeRepository swipeRepository;
     private final BookRepository bookRepository;
     private final EmotionDiagnosisRecommendationRepository recommendationRepository;
+    private final EmotionBookRecommendationService recommendationService;
+
+    @Autowired
+    public EmotionDiagnosisService(
+            EmotionDiagnosisRepository diagnosisRepository,
+            DiagnosisSwipeRepository swipeRepository,
+            BookRepository bookRepository,
+            EmotionDiagnosisRecommendationRepository recommendationRepository,
+            EmotionBookRecommendationService recommendationService
+    ) {
+        this.diagnosisRepository = diagnosisRepository;
+        this.swipeRepository = swipeRepository;
+        this.bookRepository = bookRepository;
+        this.recommendationRepository = recommendationRepository;
+        this.recommendationService = recommendationService;
+    }
 
     public EmotionDiagnosisService(
             EmotionDiagnosisRepository diagnosisRepository,
@@ -30,10 +47,8 @@ public class EmotionDiagnosisService {
             BookRepository bookRepository,
             EmotionDiagnosisRecommendationRepository recommendationRepository
     ) {
-        this.diagnosisRepository = diagnosisRepository;
-        this.swipeRepository = swipeRepository;
-        this.bookRepository = bookRepository;
-        this.recommendationRepository = recommendationRepository;
+        this(diagnosisRepository, swipeRepository, bookRepository,
+                recommendationRepository, new EmotionBookRecommendationService());
     }
 
     @Transactional
@@ -55,8 +70,12 @@ public class EmotionDiagnosisService {
             return Submission.empty(new EmotionDiagnosisResponse(diagnosis.getDiagnosisId(), List.of()));
         }
 
-        List<EmotionDiagnosisResponse.RecommendedBook> books = bookRepository.findAll().stream()
-                .limit(3)
+        List<Integer> likedCardIds = swipes.stream()
+                .filter(EmotionDiagnosisRequest.Swipe::liked)
+                .map(EmotionDiagnosisRequest.Swipe::cardId)
+                .toList();
+        List<EmotionDiagnosisResponse.RecommendedBook> books = recommendationService
+                .recommend(likedCardIds, bookRepository.findAll()).stream()
                 .map(this::toRecommendedBook)
                 .toList();
         if (books.isEmpty()) {
