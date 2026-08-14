@@ -62,6 +62,10 @@ public class EssayGenerationWorker {
                     ? essayEditor.organize(reflections)
                     : aiEssayEditor.organize(reflections, essayEditor);
 
+            if (essay.getStatus() == EssayStatus.CANCELED) {
+                return;
+            }
+
             int chapterNo = 1;
             for (EssayEditor.ChapterDraft draft : chapters) {
                 EssayChapter chapter = essayChapterRepository.save(new EssayChapter(essay, chapterNo, draft.title()));
@@ -72,7 +76,9 @@ public class EssayGenerationWorker {
             }
             essay.complete();
         } catch (RuntimeException exception) {
-            essay.fail();
+            if (essay.getStatus() != EssayStatus.CANCELED) {
+                essay.fail();
+            }
             log.warning("Essay generation failed for essayId=" + essayId + ": " + exception.getMessage());
         }
     }

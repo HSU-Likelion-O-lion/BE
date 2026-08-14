@@ -57,6 +57,12 @@ public class Essay {
         this.status = EssayStatus.QUEUED;
     }
 
+    public void cancel() {
+        if (status == EssayStatus.QUEUED || status == EssayStatus.PROCESSING) {
+            this.status = EssayStatus.CANCELED;
+        }
+    }
+
     public void publish(String title) {
         this.title = title;
         this.publishedAt = Instant.now();

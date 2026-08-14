@@ -4,5 +4,6 @@ public enum EssayStatus {
     QUEUED,
     PROCESSING,
     COMPLETED,
-    FAILED
+    FAILED,
+    CANCELED
 }

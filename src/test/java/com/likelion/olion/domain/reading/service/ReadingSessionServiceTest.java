@@ -164,7 +164,8 @@ class ReadingSessionServiceTest {
     @Test
     void completesInProgressSessionAndReturnsAiQuestion() {
         ReadingSessionService service = new ReadingSessionService(readingSessionRepository, userBookRepository);
-        ReadingSession session = new ReadingSession(1L, new UserBook(1L, book), 30);
+        ReadingSession session = new ReadingSession(1L, new UserBook(1L, book), 30,
+                java.time.Instant.now().minus(30, java.time.temporal.ChronoUnit.MINUTES));
         given(readingSessionRepository.findBySessionIdAndUserId(100L, 1L))
                 .willReturn(Optional.of(session));
 
@@ -173,6 +174,37 @@ class ReadingSessionServiceTest {
         assertThat(response.status()).isEqualTo("COMPLETED");
         assertThat(response.aiQuestion()).isNotBlank();
         assertThat(session.getStatus()).isEqualTo(ReadingSessionStatus.COMPLETED);
+    }
+
+    @Test
+    void rejectsCompletingBeforeTargetTime() {
+        ReadingSessionService service = new ReadingSessionService(readingSessionRepository, userBookRepository);
+        ReadingSession session = new ReadingSession(1L, new UserBook(1L, book), 30);
+        given(readingSessionRepository.findBySessionIdAndUserId(100L, 1L))
+                .willReturn(Optional.of(session));
+
+        assertThatThrownBy(() -> service.complete(1L, 100L))
+                .isInstanceOf(BusinessException.class);
+    }
+
+    @Test
+    void pausesOnInterruptionAndResumesOnContinue() {
+        ReadingSessionService service = new ReadingSessionService(
+                readingSessionRepository, readingInterruptionRepository, userBookRepository);
+        ReadingSession session = new ReadingSession(1L, new UserBook(1L, book), 30,
+                java.time.Instant.now().minus(10, java.time.temporal.ChronoUnit.MINUTES));
+        given(readingSessionRepository.findBySessionIdAndUserId(100L, 1L))
+                .willReturn(Optional.of(session));
+        given(readingInterruptionRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
+
+        service.recordInterruption(1L, 100L, new ReadingInterruptionRequest(
+                "NOTIFICATION", null, java.time.Instant.now()));
+        assertThat(session.getStatus()).isEqualTo(ReadingSessionStatus.PAUSED);
+        assertThat(session.getFocusedSeconds()).isPositive();
+
+        service.recordInterruption(1L, 100L, new ReadingInterruptionRequest(
+                "CONTINUE", null, java.time.Instant.now()));
+        assertThat(session.getStatus()).isEqualTo(ReadingSessionStatus.IN_PROGRESS);
     }
 
     @Test

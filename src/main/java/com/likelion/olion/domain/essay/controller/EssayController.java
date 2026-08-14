@@ -76,6 +76,16 @@ public class EssayController {
                 .body(ApiResponse.success("SUCCESS", HttpStatus.ACCEPTED, "에세이 편집을 다시 시도합니다.", response));
     }
 
+    @PostMapping("/{essayId}/cancel")
+    @Operation(summary = "에세이 작업 취소", description = "대기 중이거나 처리 중인 AI 에세이 편집 작업을 취소합니다.")
+    public ResponseEntity<ApiResponse<EssayJobStatusResponse>> cancel(
+            Principal principal,
+            @PathVariable Long essayId
+    ) {
+        EssayJobStatusResponse response = essayService.cancel(Long.valueOf(principal.getName()), essayId);
+        return ResponseEntity.ok(ApiResponse.success("에세이 편집 작업을 취소했습니다.", response));
+    }
+
     @GetMapping("/{essayId}/draft")
     @Operation(summary = "에세이 초안 조회", description = "AI 편집자가 구성한 에세이 목차 초안을 조회합니다.")
     public ResponseEntity<ApiResponse<EssayDraftResponse>> getDraft(

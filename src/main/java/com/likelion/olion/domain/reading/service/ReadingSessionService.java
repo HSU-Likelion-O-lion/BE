@@ -30,7 +30,7 @@ import com.likelion.olion.global.ai.AiTextGenerator;
 
 import java.util.Set;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
+import java.time.Clock;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -51,6 +51,21 @@ public class ReadingSessionService {
     private final ReadingInterruptionRepository readingInterruptionRepository;
     private final UserBookRepository userBookRepository;
     private final AiTextGenerator aiTextGenerator;
+    private final Clock clock;
+
+    public ReadingSessionService(
+            ReadingSessionRepository readingSessionRepository,
+            ReadingInterruptionRepository readingInterruptionRepository,
+            UserBookRepository userBookRepository,
+            AiTextGenerator aiTextGenerator,
+            Clock clock
+    ) {
+        this.readingSessionRepository = readingSessionRepository;
+        this.readingInterruptionRepository = readingInterruptionRepository;
+        this.userBookRepository = userBookRepository;
+        this.aiTextGenerator = aiTextGenerator;
+        this.clock = clock;
+    }
 
     @Autowired
     public ReadingSessionService(
@@ -59,17 +74,15 @@ public class ReadingSessionService {
             UserBookRepository userBookRepository,
             AiTextGenerator aiTextGenerator
     ) {
-        this.readingSessionRepository = readingSessionRepository;
-        this.readingInterruptionRepository = readingInterruptionRepository;
-        this.userBookRepository = userBookRepository;
-        this.aiTextGenerator = aiTextGenerator;
+        this(readingSessionRepository, readingInterruptionRepository, userBookRepository,
+                aiTextGenerator, Clock.systemUTC());
     }
 
     public ReadingSessionService(
             ReadingSessionRepository readingSessionRepository,
             UserBookRepository userBookRepository
     ) {
-        this(readingSessionRepository, null, userBookRepository, AiTextGenerator.disabled());
+        this(readingSessionRepository, null, userBookRepository, AiTextGenerator.disabled(), Clock.systemUTC());
     }
 
     public ReadingSessionService(
@@ -78,7 +91,7 @@ public class ReadingSessionService {
             UserBookRepository userBookRepository
     ) {
         this(readingSessionRepository, readingInterruptionRepository, userBookRepository,
-                AiTextGenerator.disabled());
+                AiTextGenerator.disabled(), Clock.systemUTC());
     }
 
     @Transactional
@@ -90,19 +103,23 @@ public class ReadingSessionService {
             throw new BusinessException(ErrorCode.INVALID_INPUT);
         }
 
-        if (readingSessionRepository.existsByUserIdAndStatus(userId, ReadingSessionStatus.IN_PROGRESS)) {
+        if (readingSessionRepository.existsByUserIdAndStatus(userId, ReadingSessionStatus.IN_PROGRESS)
+                || readingSessionRepository.existsByUserIdAndStatus(userId, ReadingSessionStatus.PAUSED)) {
             throw new BusinessException(ErrorCode.CONFLICT);
         }
 
         ReadingSession session = readingSessionRepository.save(
-                new ReadingSession(userId, userBook, request.targetMinutes()));
+                new ReadingSession(userId, userBook, request.targetMinutes(), Instant.now(clock)));
         return ReadingSessionStartResponse.from(session);
     }
 
     public ActiveReadingSessionResponse getActive(Long userId) {
-        return ActiveReadingSessionResponse.from(readingSessionRepository
+        ReadingSession session = readingSessionRepository
                 .findFirstByUserIdAndStatusOrderByStartedAtDesc(userId, ReadingSessionStatus.IN_PROGRESS)
-                .orElse(null));
+                .or(() -> readingSessionRepository.findFirstByUserIdAndStatusOrderByStartedAtDesc(
+                        userId, ReadingSessionStatus.PAUSED))
+                .orElse(null);
+        return ActiveReadingSessionResponse.from(session, Instant.now(clock));
     }
 
     public ReadingSessionHeartbeatResponse heartbeat(
@@ -117,8 +134,7 @@ public class ReadingSessionService {
             throw new BusinessException(ErrorCode.CONFLICT);
         }
 
-        long serverElapsedSeconds = Math.max(0,
-                session.getStartedAt().until(Instant.now(), ChronoUnit.SECONDS));
+        long serverElapsedSeconds = session.calculateFocusedSeconds(Instant.now(clock));
         int targetSeconds = session.getTargetMinutes() * 60;
         int remainingSeconds = (int) Math.max(0, targetSeconds - serverElapsedSeconds);
         boolean valid = Math.abs(serverElapsedSeconds - request.elapsedSeconds())
@@ -130,13 +146,15 @@ public class ReadingSessionService {
         ReadingSession session = readingSessionRepository.findBySessionIdAndUserId(sessionId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
 
-        if (session.getStatus() != ReadingSessionStatus.IN_PROGRESS) {
+        if (session.getStatus() != ReadingSessionStatus.IN_PROGRESS
+                && session.getStatus() != ReadingSessionStatus.PAUSED) {
             throw new BusinessException(ErrorCode.CONFLICT);
         }
 
-        return new ReadingSessionResumeResponse(
-                session.getStatus().name(),
-                calculateRemainingSeconds(session));
+        if (session.getStatus() == ReadingSessionStatus.PAUSED) {
+            session.resume(Instant.now(clock));
+        }
+        return new ReadingSessionResumeResponse(session.getStatus().name(), calculateRemainingSeconds(session));
     }
 
     @Transactional
@@ -148,6 +166,11 @@ public class ReadingSessionService {
             throw new BusinessException(ErrorCode.CONFLICT);
         }
 
+        Instant completedAt = Instant.now(clock);
+        if (session.calculateFocusedSeconds(completedAt) < session.getTargetMinutes() * 60L) {
+            throw new BusinessException(ErrorCode.CONFLICT, "목표 시간이 지나지 않은 독서 세션은 완료할 수 없습니다.");
+        }
+
         String bookTitle = session.getUserBook().getBook().getTitle();
         String prompt = """
                 독서 세션을 마친 사용자에게 보여줄 사유 질문을 한 문장으로 작성하세요.
@@ -155,7 +178,7 @@ public class ReadingSessionService {
                 질문은 정답을 요구하지 않고, 오늘 읽은 내용과 사용자의 삶을 연결하는 따뜻한 한국어 질문이어야 합니다.
                 """.formatted(bookTitle);
         String aiQuestion = aiTextGenerator.generate(prompt, DEFAULT_AI_QUESTION);
-        session.complete(aiQuestion);
+        session.complete(aiQuestion, completedAt);
         return new ReadingSessionCompleteResponse(session.getStatus().name(), session.getAiQuestion());
     }
 
@@ -164,11 +187,12 @@ public class ReadingSessionService {
         ReadingSession session = readingSessionRepository.findBySessionIdAndUserId(sessionId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
 
-        if (session.getStatus() != ReadingSessionStatus.IN_PROGRESS) {
+        if (session.getStatus() != ReadingSessionStatus.IN_PROGRESS
+                && session.getStatus() != ReadingSessionStatus.PAUSED) {
             throw new BusinessException(ErrorCode.CONFLICT);
         }
 
-        session.abandon();
+        session.abandon(Instant.now(clock));
         return new ReadingSessionAbandonResponse(session.getStatus().name());
     }
 
@@ -186,8 +210,22 @@ public class ReadingSessionService {
             throw new BusinessException(ErrorCode.INVALID_INPUT);
         }
 
+        if (session.getStatus() != ReadingSessionStatus.IN_PROGRESS
+                && session.getStatus() != ReadingSessionStatus.PAUSED) {
+            throw new BusinessException(ErrorCode.CONFLICT);
+        }
+        Instant now = Instant.now(clock);
+        if (request.occurredAt().isBefore(session.getStartedAt()) || request.occurredAt().isAfter(now)) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "중단 시각이 독서 세션 범위를 벗어났습니다.");
+        }
+
         ReadingInterruption interruption = readingInterruptionRepository.save(
                 new ReadingInterruption(session, reason, request.customText(), request.occurredAt()));
+        if (reason == ReadingInterruptionReason.CONTINUE || reason == ReadingInterruptionReason.EBOOK_SWITCH) {
+            session.resume(now);
+        } else {
+            session.pause(request.occurredAt());
+        }
         return new ReadingInterruptionResponse(interruption.getInterruptionId());
     }
 
@@ -211,7 +249,8 @@ public class ReadingSessionService {
         Map<Integer, Integer> hourMinutes = new TreeMap<>();
         readingSessionRepository.findByUserIdAndStatus(userId, ReadingSessionStatus.COMPLETED)
                 .forEach(session -> {
-                    int minutes = session.getTargetMinutes();
+                    int minutes = (int) Math.ceil(session.calculateFocusedSeconds(session.getCompletedAt() == null
+                            ? session.getStartedAt() : session.getCompletedAt()) / 60.0);
                     DayOfWeek weekday = session.getStartedAt().atZone(java.time.ZoneId.systemDefault()).getDayOfWeek();
                     int hour = session.getStartedAt().atZone(java.time.ZoneId.systemDefault()).getHour();
                     weekdayMinutes.merge(weekday, minutes, Integer::sum);
@@ -254,8 +293,7 @@ public class ReadingSessionService {
     }
 
     private int calculateRemainingSeconds(ReadingSession session) {
-        long elapsedSeconds = Math.max(0,
-                session.getStartedAt().until(Instant.now(), ChronoUnit.SECONDS));
+        long elapsedSeconds = session.calculateFocusedSeconds(Instant.now(clock));
         int targetSeconds = session.getTargetMinutes() * 60;
         return (int) Math.max(0, targetSeconds - elapsedSeconds);
     }
