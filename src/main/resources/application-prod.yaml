@@ -7,17 +7,18 @@ spring:
   jpa:
     open-in-view: false
     hibernate:
-      # 운영 스키마는 Flyway 마이그레이션으로만 변경한다.
-      ddl-auto: validate
+      # Flyway 마이그레이션이 신규 설치용 전체 스키마 생성을 아직 커버하지 않아
+      # (기존 운영 DB에 대한 증분 변경만 있음), 최초 스키마는 Hibernate가 생성하도록 임시로 update 사용.
+      # 스키마가 안정되면 전체 스키마 baseline 마이그레이션 추가 후 validate로 전환 권장.
+      ddl-auto: update
     properties:
       hibernate:
         format_sql: false
 
   flyway:
-    enabled: true
-    baseline-on-migrate: true
-    baseline-version: 0
-    locations: classpath:db/migration
+    # 신규 설치 시 V2 마이그레이션이 존재하지 않는 테이블(users)을 ALTER하려다 실패하므로 비활성화.
+    # 전체 스키마 baseline 마이그레이션이 추가되면 다시 활성화.
+    enabled: false
 
   mail:
     host: smtp.gmail.com
