@@ -12,10 +12,11 @@ public class CommunityPostPolicy {
             "시발", "씨발", "병신", "개새끼"
     );
     private static final String[] ADJECTIVES = {
-            "고요한", "따뜻한", "푸른", "느긋한", "다정한", "포근한", "맑은", "잔잔한"
+            "조용한", "사색하는", "춤추는", "밤을 걷는", "미소 짓는",
+            "위로하는", "다정한", "깊어지는", "머뭇거리는", "반짝이는"
     };
     private static final String[] NOUNS = {
-            "파도", "새벽", "구름", "별빛", "숲", "바람", "달빛", "여울"
+            "고양이", "나무", "여행자", "별빛", "바람", "서재", "연필", "조약돌", "바다", "시계"
     };
 
     public boolean containsProhibitedWord(String content) {
