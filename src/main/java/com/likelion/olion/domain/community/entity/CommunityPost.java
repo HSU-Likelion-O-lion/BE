@@ -31,6 +31,9 @@ public class CommunityPost {
     private Long reflectionId;
 
     @Column(nullable = false)
+    private boolean blinded;
+
+    @Column(nullable = false)
     private Instant createdAt;
 
     protected CommunityPost() {
@@ -52,11 +55,16 @@ public class CommunityPost {
         this.anonymousNickname = anonymousNickname;
         this.content = content;
         this.reflectionId = reflectionId;
+        this.blinded = false;
         this.createdAt = Instant.now();
     }
 
     public void updateContent(String content) {
         this.content = content;
+    }
+
+    public void blind() {
+        this.blinded = true;
     }
 
     public Long getPostId() { return postId; }
@@ -65,5 +73,6 @@ public class CommunityPost {
     public String getAnonymousNickname() { return anonymousNickname; }
     public String getContent() { return content; }
     public Long getReflectionId() { return reflectionId; }
+    public boolean isBlinded() { return blinded; }
     public Instant getCreatedAt() { return createdAt; }
 }

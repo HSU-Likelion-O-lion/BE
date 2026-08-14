@@ -36,6 +36,9 @@ public class CommunityReportService {
     ) {
         CommunityPost post = communityPostRepository.findByIdForUpdate(postId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "게시글을 찾을 수 없습니다."));
+        if (post.isBlinded()) {
+            throw new BusinessException(ErrorCode.CONFLICT, "블라인드 처리된 게시글입니다.");
+        }
         if (communityPostReportRepository.existsByPostPostIdAndUserId(postId, userId)) {
             throw duplicateReportException();
         }
@@ -50,8 +53,11 @@ public class CommunityReportService {
 
         long reportCount = communityPostReportRepository.countByPostPostId(postId);
         CommunityReportStatus status = reportCount > REVIEW_THRESHOLD
-                ? CommunityReportStatus.PENDING_REVIEW
+                ? CommunityReportStatus.BLINDED
                 : CommunityReportStatus.NORMAL;
+        if (status == CommunityReportStatus.BLINDED) {
+            post.blind();
+        }
         return new CommunityReportResponse(report.getReportId(), status);
     }
 

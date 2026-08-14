@@ -29,6 +29,9 @@ public class CommunityHeartService {
     public CommunityHeartResponse addHeart(Long userId, Long postId) {
         CommunityPost post = communityPostRepository.findById(postId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "게시글을 찾을 수 없습니다."));
+        if (post.isBlinded()) {
+            throw new BusinessException(ErrorCode.CONFLICT, "블라인드 처리된 게시글입니다.");
+        }
         if (communityPostHeartRepository.existsByPostPostIdAndUserId(postId, userId)) {
             throw duplicateHeartException();
         }

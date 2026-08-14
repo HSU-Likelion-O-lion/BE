@@ -2,5 +2,6 @@ package com.likelion.olion.domain.community.entity;
 
 public enum CommunityReportStatus {
     NORMAL,
-    PENDING_REVIEW
+    PENDING_REVIEW,
+    BLINDED
 }

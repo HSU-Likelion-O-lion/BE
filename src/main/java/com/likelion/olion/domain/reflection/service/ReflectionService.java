@@ -2,6 +2,7 @@ package com.likelion.olion.domain.reflection.service;
 
 import com.likelion.olion.domain.reading.entity.ReadingSession;
 import com.likelion.olion.domain.reading.repository.ReadingSessionRepository;
+import com.likelion.olion.domain.community.repository.CommunityPostRepository;
 import com.likelion.olion.domain.reflection.dto.ReflectionCreateRequest;
 import com.likelion.olion.domain.reflection.dto.ReflectionCreateResponse;
 import com.likelion.olion.domain.reflection.dto.ReflectionDeleteResponse;
@@ -14,6 +15,7 @@ import com.likelion.olion.domain.reflection.repository.ReflectionRepository;
 import com.likelion.olion.global.common.exception.BusinessException;
 import com.likelion.olion.global.common.exception.ErrorCode;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -25,13 +27,24 @@ public class ReflectionService {
 
     private final ReflectionRepository reflectionRepository;
     private final ReadingSessionRepository readingSessionRepository;
+    private final CommunityPostRepository communityPostRepository;
+
+    @Autowired
+    public ReflectionService(
+            ReflectionRepository reflectionRepository,
+            ReadingSessionRepository readingSessionRepository,
+            CommunityPostRepository communityPostRepository
+    ) {
+        this.reflectionRepository = reflectionRepository;
+        this.readingSessionRepository = readingSessionRepository;
+        this.communityPostRepository = communityPostRepository;
+    }
 
     public ReflectionService(
             ReflectionRepository reflectionRepository,
             ReadingSessionRepository readingSessionRepository
     ) {
-        this.reflectionRepository = reflectionRepository;
-        this.readingSessionRepository = readingSessionRepository;
+        this(reflectionRepository, readingSessionRepository, null);
     }
 
     @Transactional
@@ -55,7 +68,9 @@ public class ReflectionService {
     public ReflectionUpdateResponse update(Long userId, Long reflectionId, ReflectionUpdateRequest request) {
         Reflection reflection = reflectionRepository.findByReflectionIdAndUserId(reflectionId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "사유를 찾을 수 없습니다."));
-        reflection.edit(request.content());
+        String content = request.content().trim();
+        reflection.edit(content);
+        syncCommunityPosts(reflection, content);
         return new ReflectionUpdateResponse(reflection.getReflectionId());
     }
 
@@ -63,6 +78,9 @@ public class ReflectionService {
     public ReflectionDeleteResponse delete(Long userId, Long reflectionId) {
         Reflection reflection = reflectionRepository.findByReflectionIdAndUserId(reflectionId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "사유를 찾을 수 없습니다."));
+        if (communityPostRepository != null) {
+            communityPostRepository.deleteAll(communityPostRepository.findByReflectionId(reflectionId));
+        }
         reflectionRepository.delete(reflection);
         return new ReflectionDeleteResponse(coverProgress(userId));
     }
@@ -78,5 +96,13 @@ public class ReflectionService {
 
     private int coverProgress(Long userId) {
         return (int) Math.min(reflectionRepository.countByUserId(userId), MAX_COVER_PROGRESS);
+    }
+
+    private void syncCommunityPosts(Reflection reflection, String content) {
+        if (communityPostRepository == null) {
+            return;
+        }
+        communityPostRepository.findByReflectionId(reflection.getReflectionId())
+                .forEach(post -> post.updateContent(content));
     }
 }

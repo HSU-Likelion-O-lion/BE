@@ -59,7 +59,7 @@ class CommunityReportServiceTest {
     }
 
     @Test
-    void movesFourthReportToPendingReview() {
+    void blindsPostOnFourthReport() {
         CommunityReportService service = new CommunityReportService(
                 communityPostRepository, communityPostReportRepository);
         CommunityPost post = new CommunityPost(12L, 2L, "고요한 파도", "신고할 내용");
@@ -74,7 +74,24 @@ class CommunityReportServiceTest {
         CommunityReportResponse response = service.reportPost(
                 4L, 200L, new CommunityReportRequest(null));
 
-        assertThat(response.status()).isEqualTo(CommunityReportStatus.PENDING_REVIEW);
+        assertThat(response.status()).isEqualTo(CommunityReportStatus.BLINDED);
+        assertThat(post.isBlinded()).isTrue();
+    }
+
+    @Test
+    void rejectsReportForBlindedPost() {
+        CommunityReportService service = new CommunityReportService(
+                communityPostRepository, communityPostReportRepository);
+        CommunityPost post = new CommunityPost(12L, 2L, "고요한 파도", "신고할 내용");
+        post.blind();
+        given(communityPostRepository.findByIdForUpdate(200L)).willReturn(Optional.of(post));
+
+        assertThatThrownBy(() -> service.reportPost(
+                1L, 200L, new CommunityReportRequest(null)))
+                .isInstanceOf(BusinessException.class)
+                .extracting(exception -> ((BusinessException) exception).errorCode())
+                .isEqualTo(ErrorCode.CONFLICT);
+        verify(communityPostReportRepository, never()).saveAndFlush(any());
     }
 
     @Test

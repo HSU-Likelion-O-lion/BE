@@ -86,6 +86,7 @@ public class CommunityPostService {
 
         return new CommunityPostPreviewResponse(communityPostRepository
                 .findByRoomIdOrderByCreatedAtDesc(roomId).stream()
+                .filter(post -> !post.isBlinded())
                 .map(post -> new CommunityPostPreviewResponse.Preview(
                         post.getPostId(), firstLine(post.getContent())))
                 .toList());
@@ -95,6 +96,7 @@ public class CommunityPostService {
         checkAccess(userId, roomId);
         return new CommunityPostListResponse(communityPostRepository
                 .findByRoomIdOrderByCreatedAtDesc(roomId).stream()
+                .filter(post -> !post.isBlinded())
                 .map(post -> {
                     boolean isMine = post.getUserId().equals(userId);
                     boolean isHearted = communityPostHeartRepository
