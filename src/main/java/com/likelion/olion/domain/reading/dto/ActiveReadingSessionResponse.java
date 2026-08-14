@@ -10,14 +10,17 @@ import io.swagger.v3.oas.annotations.media.Schema;
 public record ActiveReadingSessionResponse(
         @Schema(description = "진행 중 세션 정보. 없으면 null") ActiveSession session) {
     public static ActiveReadingSessionResponse from(ReadingSession readingSession) {
+        return from(readingSession, Instant.now());
+    }
+
+    public static ActiveReadingSessionResponse from(ReadingSession readingSession, Instant now) {
         if (readingSession == null) {
             return new ActiveReadingSessionResponse(null);
         }
 
-        long elapsedSeconds = Math.max(0,
-                readingSession.getStartedAt().until(Instant.now(), ChronoUnit.SECONDS));
         int targetSeconds = readingSession.getTargetMinutes() * 60;
-        int remainingSeconds = (int) Math.max(0, targetSeconds - elapsedSeconds);
+        int remainingSeconds = (int) Math.max(0,
+                targetSeconds - readingSession.calculateFocusedSeconds(now));
         return new ActiveReadingSessionResponse(new ActiveSession(
                 readingSession.getSessionId(),
                 readingSession.getStatus().name(),

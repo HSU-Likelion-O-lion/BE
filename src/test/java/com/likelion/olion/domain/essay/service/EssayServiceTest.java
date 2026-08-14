@@ -254,6 +254,27 @@ class EssayServiceTest {
                 .isInstanceOf(BusinessException.class);
     }
 
+    @Test
+    void cancelsQueuedEssay() {
+        Essay essay = new Essay(1L);
+        given(essayRepository.findByEssayIdAndUserId(7L, 1L)).willReturn(Optional.of(essay));
+
+        EssayJobStatusResponse response = service.cancel(1L, 7L);
+
+        assertThat(response.status()).isEqualTo(EssayStatus.CANCELED);
+    }
+
+    @Test
+    void rejectsCancelingCompletedEssay() {
+        Essay essay = new Essay(1L);
+        essay.startProcessing();
+        essay.complete();
+        given(essayRepository.findByEssayIdAndUserId(7L, 1L)).willReturn(Optional.of(essay));
+
+        assertThatThrownBy(() -> service.cancel(1L, 7L))
+                .isInstanceOf(BusinessException.class);
+    }
+
     private ReadingSession mockSession() {
         return new ReadingSession(1L, mock(UserBook.class), 30);
     }

@@ -73,6 +73,17 @@ class EssayGenerationWorkerTest {
     }
 
     @Test
+    void skipsCanceledEssay() {
+        essay.cancel();
+        given(essayRepository.findByIdForUpdate(7L)).willReturn(Optional.of(essay));
+
+        worker.process(7L);
+
+        assertThat(essay.getStatus()).isEqualTo(EssayStatus.CANCELED);
+        verify(reflectionRepository, never()).findByEssay_EssayId(any());
+    }
+
+    @Test
     void failsEssayWhenOrganizationThrows() {
         given(essayRepository.findByIdForUpdate(7L)).willReturn(Optional.of(essay));
         given(reflectionRepository.findByEssay_EssayId(7L)).willReturn(List.of());

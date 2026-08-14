@@ -90,6 +90,18 @@ public class EssayService {
         return new EssayJobStatusResponse(essay.getStatus());
     }
 
+    @Transactional
+    public EssayJobStatusResponse cancel(Long userId, Long essayId) {
+        Essay essay = essayRepository.findByEssayIdAndUserId(essayId, userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "에세이를 찾을 수 없습니다."));
+        if (essay.getStatus() != EssayStatus.QUEUED && essay.getStatus() != EssayStatus.PROCESSING) {
+            throw new BusinessException(ErrorCode.CONFLICT, "대기 중이거나 처리 중인 작업만 취소할 수 있습니다.");
+        }
+
+        essay.cancel();
+        return new EssayJobStatusResponse(essay.getStatus());
+    }
+
     @Transactional(readOnly = true)
     public EssayDraftResponse getDraft(Long userId, Long essayId) {
         Essay essay = essayRepository.findByEssayIdAndUserId(essayId, userId)
