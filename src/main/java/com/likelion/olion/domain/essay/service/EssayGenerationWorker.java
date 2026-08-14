@@ -60,7 +60,7 @@ public class EssayGenerationWorker {
             List<Reflection> reflections = reflectionRepository.findByEssay_EssayId(essayId);
             List<EssayEditor.ChapterDraft> chapters = aiEssayEditor == null
                     ? essayEditor.organize(reflections)
-                    : aiEssayEditor.organize(reflections, essayEditor);
+                    : aiEssayEditor.organize(essay.getUserId(), reflections, essayEditor);
 
             if (essay.getStatus() == EssayStatus.CANCELED) {
                 return;
