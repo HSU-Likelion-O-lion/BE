@@ -1,8 +1,10 @@
 package com.likelion.olion.domain.user.controller;
 
+import com.likelion.olion.domain.user.dto.request.UpdatePlanRequest;
 import com.likelion.olion.domain.user.dto.request.UpdateUserRequest;
 import com.likelion.olion.domain.user.dto.response.AvailableResponse;
 import com.likelion.olion.domain.user.dto.response.ProfileImageResponse;
+import com.likelion.olion.domain.user.dto.response.UpdatePlanResponse;
 import com.likelion.olion.domain.user.dto.response.UpdateUserResponse;
 import com.likelion.olion.domain.user.dto.response.UserMeResponse;
 import com.likelion.olion.domain.user.service.UserService;
@@ -43,6 +45,13 @@ public class UserController {
     public ResponseEntity<ApiResponse<UpdateUserResponse>> updateMe(Principal principal,
                                                                       @Valid @RequestBody UpdateUserRequest request) {
         return ResponseEntity.ok(ApiResponse.success("회원 정보가 수정되었습니다.", userService.updateMe(getUserId(principal), request)));
+    }
+
+    @PatchMapping("/api/users/me/plan")
+    @Operation(summary = "구독 등급 변경", description = "프론트에서 결제(시늉)를 완료한 뒤, 로그인한 사용자 본인의 구독 등급을 변경합니다.")
+    public ResponseEntity<ApiResponse<UpdatePlanResponse>> updatePlan(Principal principal,
+                                                                        @Valid @RequestBody UpdatePlanRequest request) {
+        return ResponseEntity.ok(ApiResponse.success("구독 등급이 변경되었습니다.", userService.updatePlan(getUserId(principal), request)));
     }
 
     @DeleteMapping("/api/users/me")

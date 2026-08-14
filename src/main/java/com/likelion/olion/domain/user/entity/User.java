@@ -3,6 +3,8 @@ package com.likelion.olion.domain.user.entity;
 import com.likelion.olion.global.common.BaseTimeEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -34,15 +36,24 @@ public class User extends BaseTimeEntity {
     @Column(length = 500)
     private String profileImageUrl;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private SubscriptionPlan plan = SubscriptionPlan.BASIC;
+
     @Builder
     public User(String email, String password, String nickname) {
         this.email = email;
         this.password = password;
         this.nickname = nickname;
+        this.plan = SubscriptionPlan.BASIC;
     }
 
     public void changeNickname(String nickname) {
         this.nickname = nickname;
+    }
+
+    public void changePlan(SubscriptionPlan plan) {
+        this.plan = plan;
     }
 
     public void changePassword(String encodedPassword) {

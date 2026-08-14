@@ -1,7 +1,9 @@
 package com.likelion.olion.domain.user.service;
 
+import com.likelion.olion.domain.user.dto.request.UpdatePlanRequest;
 import com.likelion.olion.domain.user.dto.request.UpdateUserRequest;
 import com.likelion.olion.domain.user.dto.response.ProfileImageResponse;
+import com.likelion.olion.domain.user.dto.response.UpdatePlanResponse;
 import com.likelion.olion.domain.user.dto.response.UpdateUserResponse;
 import com.likelion.olion.domain.user.dto.response.UserMeResponse;
 import com.likelion.olion.domain.user.entity.User;
@@ -28,7 +30,14 @@ public class UserService {
     public UserMeResponse getMe(Long userId) {
         User user = getUser(userId);
         return new UserMeResponse(user.getId(), user.getEmail(), user.getNickname(),
-                user.getProfileImageUrl(), user.getCreatedAt(), user.getUpdatedAt());
+                user.getProfileImageUrl(), user.getPlan(), user.getCreatedAt(), user.getUpdatedAt());
+    }
+
+    @Transactional
+    public UpdatePlanResponse updatePlan(Long userId, UpdatePlanRequest request) {
+        User user = getUser(userId);
+        user.changePlan(request.plan());
+        return new UpdatePlanResponse(user.getId(), user.getPlan());
     }
 
     @Transactional
