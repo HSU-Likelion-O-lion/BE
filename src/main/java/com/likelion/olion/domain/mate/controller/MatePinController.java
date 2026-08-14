@@ -38,7 +38,7 @@ public class MatePinController {
     }
 
     @PostMapping
-    @Operation(summary = "도서 핀 고정", description = "책장 도서 항목을 메이트 화면에 핀 고정합니다. 사용자별 최대 5권까지 가능합니다.")
+    @Operation(summary = "도서 핀 고정", description = "책장 도서 항목을 메이트 화면에 핀 고정합니다. 구독 등급에 따라 최대 개수(BASIC 3권, PLUS 5권, PRO 7권)가 다릅니다.")
     public ResponseEntity<ApiResponse<MatePinSaveResponse>> addPin(
             Principal principal,
             @Valid @RequestBody MatePinRequest request
