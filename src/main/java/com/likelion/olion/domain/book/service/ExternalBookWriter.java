@@ -28,7 +28,8 @@ public class ExternalBookWriter {
                 result.externalUrl(),
                 result.provider(),
                 result.isbn13(),
-                result.providerBookId()
+                result.providerBookId(),
+                result.category()
         ));
         book.updateExternalMetadata(
                 result.title(),
@@ -39,7 +40,8 @@ public class ExternalBookWriter {
                 result.externalUrl(),
                 result.provider(),
                 result.isbn13(),
-                result.providerBookId()
+                result.providerBookId(),
+                result.category()
         );
         return bookRepository.saveAndFlush(book);
     }

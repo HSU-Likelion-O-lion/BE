@@ -63,7 +63,7 @@ class BookSearchServiceTest {
         BookSearchResult result = new BookSearchResult(
                 "아몬드", "손원평", "https://image.example/almond.jpg",
                 "창비", "책 소개", "https://book.example/almond", "KAKAO",
-                "9788936434267", "9788936434267"
+                "9788936434267", "9788936434267", null
         );
         Book savedBook = mock(Book.class);
         when(savedBook.getBookId()).thenReturn(5L);

@@ -21,7 +21,7 @@ class ExternalBookWriterTest {
     void ISBN13으로_기존_도서를_찾아_갱신한다() {
         Book existing = Book.fromExternal(
                 "이전 제목", "손원평", null, "창비", null,
-                "https://old.example", "KAKAO", "9788936434267", "8936434264"
+                "https://old.example", "KAKAO", "9788936434267", "8936434264", null
         );
         BookSearchResult result = result();
         when(repository.findByIsbn13("9788936434267")).thenReturn(Optional.of(existing));
@@ -55,7 +55,7 @@ class ExternalBookWriterTest {
         return new BookSearchResult(
                 "아몬드", "손원평", "https://image.example/almond.jpg", "창비",
                 "책 소개", "https://book.example/almond", "KAKAO",
-                "9788936434267", "8936434264"
+                "9788936434267", "8936434264", null
         );
     }
 }

@@ -19,10 +19,15 @@ public record ReflectionListResponse(
     public record Item(
             @Schema(description = "사유 ID", example = "88") Long reflectionId,
             @Schema(description = "본문", example = "오늘 읽은 부분에서...") String content,
+            @Schema(description = "이 사유를 작성한 독서 세션의 책 제목", example = "어린 왕자") String bookTitle,
             @Schema(description = "작성 시각", example = "2026-08-10T09:00:00Z") Instant createdAt
     ) {
         private static Item from(Reflection reflection) {
-            return new Item(reflection.getReflectionId(), reflection.getContent(), reflection.getCreatedAt());
+            return new Item(
+                    reflection.getReflectionId(),
+                    reflection.getContent(),
+                    reflection.getSession().getUserBook().getBook().getTitle(),
+                    reflection.getCreatedAt());
         }
     }
 }
