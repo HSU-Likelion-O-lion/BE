@@ -10,7 +10,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.lang.reflect.Method;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -51,5 +53,15 @@ class CommunityRoomServiceTest {
 
         assertThatThrownBy(() -> service.getRooms(1L))
                 .isInstanceOf(BusinessException.class);
+    }
+
+    @Test
+    void getRoomsRunsInsideTransactionSoLazyBookCanBeLoaded() throws NoSuchMethodException {
+        Method getRooms = CommunityRoomService.class.getMethod("getRooms", Long.class);
+
+        assertThat(getRooms.isAnnotationPresent(Transactional.class))
+                .as("getRooms must run inside a transaction so the lazily-loaded UserBook.book can be accessed "
+                        + "after the repository call returns (open-in-view is disabled)")
+                .isTrue();
     }
 }

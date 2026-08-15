@@ -7,6 +7,7 @@ import com.likelion.olion.domain.community.dto.CommunityRoomResponse;
 import com.likelion.olion.global.common.exception.BusinessException;
 import com.likelion.olion.global.common.exception.ErrorCode;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class CommunityRoomService {
@@ -21,6 +22,7 @@ public class CommunityRoomService {
         this.userBookRepository = userBookRepository;
     }
 
+    @Transactional(readOnly = true)
     public CommunityRoomResponse getRooms(Long userId) {
         if (!communityAccessService.getAccess(userId).canEnter()) {
             throw new BusinessException(ErrorCode.FORBIDDEN);
