@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Component
-@Order(1)
+@Order(2)
 @ConditionalOnProperty(prefix = "book.api.kakao", name = "rest-api-key")
 public class KakaoBookSearchProvider implements BookSearchProvider {
     private final RestClient restClient;
@@ -50,7 +50,8 @@ public class KakaoBookSearchProvider implements BookSearchProvider {
                     item.path("url").asText(),
                     "KAKAO",
                     extractIsbn13(item.path("isbn").asText()),
-                    extractProviderBookId(item.path("isbn").asText())
+                    extractProviderBookId(item.path("isbn").asText()),
+                    null
             ));
         }
         return results;

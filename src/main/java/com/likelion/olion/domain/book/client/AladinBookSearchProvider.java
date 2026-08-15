@@ -16,7 +16,7 @@ import java.util.List;
 import org.xml.sax.InputSource;
 
 @Component
-@Order(2)
+@Order(1)
 @ConditionalOnProperty(prefix = "book.api.aladin", name = "ttb-key")
 public class AladinBookSearchProvider implements BookSearchProvider {
     private final RestClient restClient;
@@ -75,7 +75,8 @@ public class AladinBookSearchProvider implements BookSearchProvider {
                         text(item, "link"),
                         "ALADIN",
                         normalizeIsbn13(text(item, "isbn13")),
-                        normalize(text(item, "itemId"))
+                        normalize(text(item, "itemId")),
+                        normalize(text(item, "categoryName"))
                 ));
             }
             return results;

@@ -19,7 +19,7 @@ class ExternalBookSyncServiceTest {
         ExternalBookSyncService service = new ExternalBookSyncService(writer);
         BookSearchResult result = new BookSearchResult(
                 "아몬드", "손원평", null, "창비", null,
-                "https://book.example/almond", "KAKAO", "9788936434267", "8936434264"
+                "https://book.example/almond", "KAKAO", "9788936434267", "8936434264", null
         );
         Book existing = mock(Book.class);
         when(writer.saveOrUpdate(result)).thenThrow(new DataIntegrityViolationException("duplicate"));
