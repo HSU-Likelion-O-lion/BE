@@ -148,6 +148,25 @@ class EmotionDiagnosisServiceTest {
     }
 
     @Test
+    void 추천할_도서가_없으면_기본_추천_도서는_존재하지_않는_이미지_URL_대신_null을_반환한다() {
+        when(diagnosisRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(bookRepository.findAll()).thenReturn(List.of());
+        EmotionDiagnosisRequest request = new EmotionDiagnosisRequest(List.of(
+                new EmotionDiagnosisRequest.Swipe(1, true),
+                new EmotionDiagnosisRequest.Swipe(2, false),
+                new EmotionDiagnosisRequest.Swipe(3, false),
+                new EmotionDiagnosisRequest.Swipe(4, false),
+                new EmotionDiagnosisRequest.Swipe(5, false)
+        ));
+
+        EmotionDiagnosisService.Submission result = service.submit(7L, request);
+
+        assertThat(result.status().value()).isEqualTo(502);
+        assertThat(result.data().recommendedBooks()).singleElement().satisfies(book ->
+                assertThat(book.coverImageUrl()).isNull());
+    }
+
+    @Test
     void BASIC_등급이_오늘_1회_진단했으면_추가_진단이_429로_거절된다() {
         when(userRepository.findById(7L)).thenReturn(Optional.of(userWithPlan(SubscriptionPlan.BASIC)));
         when(diagnosisRepository.countByUserIdAndCreatedAtBetween(anyLong(), any(Instant.class), any(Instant.class)))

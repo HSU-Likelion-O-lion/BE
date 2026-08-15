@@ -98,7 +98,7 @@ public class EmotionDiagnosisService {
             EmotionDiagnosisResponse response = new EmotionDiagnosisResponse(
                     diagnosis.getDiagnosisId(),
                     List.of(new EmotionDiagnosisResponse.RecommendedBook(
-                            1L, "기본 추천 도서", "https://cdn.olion.com/book/1.png", "지금 이 순간을 위한 책"
+                            1L, "기본 추천 도서", null, "지금 이 순간을 위한 책"
                     ))
             );
             saveRecommendations(diagnosis, response.recommendedBooks());
