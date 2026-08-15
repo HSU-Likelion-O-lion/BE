@@ -21,6 +21,7 @@ class AladinBookSearchProviderTest {
                         <link>https://www.aladin.co.kr/shop/wproduct.aspx?ISBN=123</link>
                         <isbn13>9788936434267</isbn13>
                         <itemId>123456789</itemId>
+                        <categoryName>국내도서>소설/시/희곡>한국소설</categoryName>
                     </item>
                 </object>
                 """;
@@ -35,6 +36,7 @@ class AladinBookSearchProviderTest {
             assertThat(book.provider()).isEqualTo("ALADIN");
             assertThat(book.isbn13()).isEqualTo("9788936434267");
             assertThat(book.providerBookId()).isEqualTo("123456789");
+            assertThat(book.category()).isEqualTo("국내도서>소설/시/희곡>한국소설");
         });
     }
 }

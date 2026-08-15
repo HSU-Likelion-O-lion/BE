@@ -34,6 +34,7 @@ public class Book {
     private String isbn13;
     @Column(name = "provider_book_id", length = 100)
     private String providerBookId;
+    private String category;
 
     protected Book() {
     }
@@ -47,7 +48,8 @@ public class Book {
             String externalUrl,
             String provider,
             String isbn13,
-            String providerBookId
+            String providerBookId,
+            String category
     ) {
         Book book = new Book();
         book.title = title;
@@ -59,6 +61,7 @@ public class Book {
         book.provider = provider;
         book.isbn13 = isbn13;
         book.providerBookId = providerBookId;
+        book.category = category;
         return book;
     }
 
@@ -71,7 +74,8 @@ public class Book {
             String externalUrl,
             String provider,
             String isbn13,
-            String providerBookId
+            String providerBookId,
+            String category
     ) {
         this.title = prefer(title, this.title);
         this.author = prefer(author, this.author);
@@ -79,6 +83,7 @@ public class Book {
         this.publisher = prefer(publisher, this.publisher);
         this.description = prefer(description, this.description);
         this.isbn13 = prefer(isbn13, this.isbn13);
+        this.category = prefer(category, this.category);
         if (this.provider == null || this.provider.isBlank()) {
             this.provider = provider;
         }
@@ -102,4 +107,5 @@ public class Book {
     public String getProvider() { return provider; }
     public String getIsbn13() { return isbn13; }
     public String getProviderBookId() { return providerBookId; }
+    public String getCategory() { return category; }
 }
