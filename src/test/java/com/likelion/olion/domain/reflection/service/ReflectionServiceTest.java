@@ -1,5 +1,6 @@
 package com.likelion.olion.domain.reflection.service;
 
+import com.likelion.olion.domain.book.entity.Book;
 import com.likelion.olion.domain.bookshelf.entity.UserBook;
 import com.likelion.olion.domain.community.entity.CommunityPost;
 import com.likelion.olion.domain.community.repository.CommunityPostRepository;
@@ -72,7 +73,11 @@ class ReflectionServiceTest {
     @Test
     void returnsReflectionListWithCoverProgress() {
         ReflectionService service = new ReflectionService(reflectionRepository, readingSessionRepository);
-        Reflection reflection = new Reflection(1L, new ReadingSession(1L, mockUserBook(), 30), "오늘 읽은 부분에서...");
+        UserBook userBook = mock(UserBook.class);
+        Book book = mock(Book.class);
+        given(userBook.getBook()).willReturn(book);
+        given(book.getTitle()).willReturn("어린 왕자");
+        Reflection reflection = new Reflection(1L, new ReadingSession(1L, userBook, 30), "오늘 읽은 부분에서...");
         given(reflectionRepository.findByUserIdOrderByCreatedAtDesc(1L)).willReturn(List.of(reflection));
         given(reflectionRepository.countByUserId(1L)).willReturn(3L);
 
@@ -81,6 +86,7 @@ class ReflectionServiceTest {
         assertThat(response.coverProgress()).isEqualTo(3);
         assertThat(response.reflections()).hasSize(1);
         assertThat(response.reflections().get(0).content()).isEqualTo("오늘 읽은 부분에서...");
+        assertThat(response.reflections().get(0).bookTitle()).isEqualTo("어린 왕자");
     }
 
     @Test
