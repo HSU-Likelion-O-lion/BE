@@ -9,8 +9,13 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+    private static final Logger log = Logger.getLogger(GlobalExceptionHandler.class.getName());
+
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ApiResponse<Void>> handleBusinessException(BusinessException exception) {
         ErrorCode errorCode = exception.errorCode();
@@ -31,6 +36,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleUnexpectedException(Exception exception) {
+        log.log(Level.SEVERE, "Unhandled exception", exception);
         ErrorCode errorCode = ErrorCode.INTERNAL_SERVER_ERROR;
         return ResponseEntity.status(errorCode.status())
                 .body(ApiResponse.error(errorCode.code(), errorCode.status(), errorCode.message()));
