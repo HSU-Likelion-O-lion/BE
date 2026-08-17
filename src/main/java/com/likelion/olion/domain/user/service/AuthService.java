@@ -1,10 +1,13 @@
 package com.likelion.olion.domain.user.service;
 
+import com.likelion.olion.domain.user.client.KakaoUserInfoClient;
+import com.likelion.olion.domain.user.dto.request.KakaoLoginRequest;
 import com.likelion.olion.domain.user.dto.request.LoginRequest;
 import com.likelion.olion.domain.user.dto.request.SignUpRequest;
 import com.likelion.olion.domain.user.dto.response.LoginResponse;
 import com.likelion.olion.domain.user.dto.response.RefreshResponse;
 import com.likelion.olion.domain.user.dto.response.SignUpResponse;
+import com.likelion.olion.domain.user.entity.AuthProvider;
 import com.likelion.olion.domain.user.entity.RefreshToken;
 import com.likelion.olion.domain.user.entity.User;
 import com.likelion.olion.domain.user.repository.RefreshTokenRepository;
@@ -31,6 +34,7 @@ public class AuthService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
+    private final KakaoUserInfoClient kakaoUserInfoClient;
 
     @Value("${jwt.refresh-token-validity-ms}")
     private long refreshTokenValidityMs;
@@ -56,12 +60,29 @@ public class AuthService {
     public LoginResponse login(LoginRequest request) {
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "회원 정보를 찾을 수 없습니다."));
-        if (!passwordEncoder.matches(request.password(), user.getPassword())) {
+        if (user.getPassword() == null || !passwordEncoder.matches(request.password(), user.getPassword())) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED, "잘못된 이메일 또는 비밀번호입니다.");
         }
         String accessToken = jwtTokenProvider.generateAccessToken(user.getId());
         RefreshToken refreshToken = issueRefreshToken(user);
         return new LoginResponse(user.getId(), user.getNickname(), accessToken, refreshToken.getToken());
+    }
+
+    @Transactional
+    public LoginResponse kakaoLogin(KakaoLoginRequest request) {
+        String providerId = kakaoUserInfoClient.getUserInfo(request.accessToken()).providerId();
+        User user = userRepository.findByProviderAndProviderId(AuthProvider.KAKAO, providerId)
+                .orElseGet(() -> registerKakaoUser(providerId));
+
+        String accessToken = jwtTokenProvider.generateAccessToken(user.getId());
+        RefreshToken refreshToken = issueRefreshToken(user);
+        return new LoginResponse(user.getId(), user.getNickname(), accessToken, refreshToken.getToken());
+    }
+
+    private User registerKakaoUser(String providerId) {
+        String email = "kakao_" + providerId + "@olion.internal";
+        String nickname = "카카오사용자" + providerId;
+        return userRepository.save(User.ofKakao(email, nickname, providerId));
     }
 
     @Transactional
