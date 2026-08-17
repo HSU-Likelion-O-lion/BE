@@ -3,6 +3,7 @@ package com.likelion.olion.domain.reading.service;
 import com.likelion.olion.domain.book.entity.Book;
 import com.likelion.olion.domain.bookshelf.entity.UserBook;
 import com.likelion.olion.domain.bookshelf.repository.UserBookRepository;
+import com.likelion.olion.domain.reading.config.ReadingSessionTestProperties;
 import com.likelion.olion.domain.reading.dto.ReadingSessionStartRequest;
 import com.likelion.olion.domain.reading.dto.ReadingSessionStartResponse;
 import com.likelion.olion.domain.reading.dto.ActiveReadingSessionResponse;
@@ -343,7 +344,7 @@ class ReadingSessionServiceTest {
     void basicPlanUsersOnlySeeLastSevenDaysOfStatistics() {
         ReadingSessionService service = new ReadingSessionService(
                 readingSessionRepository, readingInterruptionRepository, userBookRepository,
-                AiTextGenerator.disabled(), Clock.systemUTC(), userRepository);
+                AiTextGenerator.disabled(), Clock.systemUTC(), userRepository, new ReadingSessionTestProperties());
         given(userRepository.findById(1L)).willReturn(Optional.of(userWithPlan(SubscriptionPlan.BASIC)));
         given(readingSessionRepository.findByUserIdAndStatusAndStartedAtAfter(
                 anyLong(), any(ReadingSessionStatus.class), any())).willReturn(List.of());
@@ -360,7 +361,7 @@ class ReadingSessionServiceTest {
     void proPlanUsersSeeFullHistoryStatistics() {
         ReadingSessionService service = new ReadingSessionService(
                 readingSessionRepository, readingInterruptionRepository, userBookRepository,
-                AiTextGenerator.disabled(), Clock.systemUTC(), userRepository);
+                AiTextGenerator.disabled(), Clock.systemUTC(), userRepository, new ReadingSessionTestProperties());
         given(userRepository.findById(1L)).willReturn(Optional.of(userWithPlan(SubscriptionPlan.PRO)));
         given(readingSessionRepository.findByUserIdAndStatus(1L, ReadingSessionStatus.COMPLETED))
                 .willReturn(List.of());
@@ -407,5 +408,36 @@ class ReadingSessionServiceTest {
         assertThat(response.badges()).hasSize(2);
         assertThat(response.badges().get(0).earnedAt())
                 .isBeforeOrEqualTo(response.badges().get(1).earnedAt());
+    }
+
+    @Test
+    void allowsSkipForAllowlistedTestAccount() {
+        ReadingSessionTestProperties testProperties = new ReadingSessionTestProperties();
+        testProperties.setTimerSkipEmails(List.of("test1234@gmail.com"));
+        ReadingSessionService service = new ReadingSessionService(
+                readingSessionRepository, readingInterruptionRepository, userBookRepository,
+                AiTextGenerator.disabled(), Clock.systemUTC(), userRepository, testProperties);
+        User testUser = User.builder().email("test1234@gmail.com").password("encoded").nickname("테스트").build();
+        given(userRepository.findById(1L)).willReturn(Optional.of(testUser));
+        ReadingSession session = new ReadingSession(1L, new UserBook(1L, book), 15);
+        given(readingSessionRepository.findBySessionIdAndUserId(100L, 1L)).willReturn(Optional.of(session));
+
+        ReadingSessionCompleteResponse response = service.skip(1L, 100L);
+
+        assertThat(response.status()).isEqualTo(ReadingSessionStatus.COMPLETED.name());
+    }
+
+    @Test
+    void rejectsSkipForNonAllowlistedAccount() {
+        ReadingSessionTestProperties testProperties = new ReadingSessionTestProperties();
+        testProperties.setTimerSkipEmails(List.of("test1234@gmail.com"));
+        ReadingSessionService service = new ReadingSessionService(
+                readingSessionRepository, readingInterruptionRepository, userBookRepository,
+                AiTextGenerator.disabled(), Clock.systemUTC(), userRepository, testProperties);
+        User regularUser = User.builder().email("regular@example.com").password("encoded").nickname("일반").build();
+        given(userRepository.findById(1L)).willReturn(Optional.of(regularUser));
+
+        assertThatThrownBy(() -> service.skip(1L, 100L)).isInstanceOf(BusinessException.class);
+        verify(readingSessionRepository, never()).findBySessionIdAndUserId(anyLong(), anyLong());
     }
 }
