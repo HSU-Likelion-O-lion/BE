@@ -1,5 +1,6 @@
 package com.likelion.olion.domain.user.repository;
 
+import com.likelion.olion.domain.user.entity.AuthProvider;
 import com.likelion.olion.domain.user.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -12,4 +13,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByEmail(String email);
 
     boolean existsByNickname(String nickname);
+
+    Optional<User> findByProviderAndProviderId(AuthProvider provider, String providerId);
 }

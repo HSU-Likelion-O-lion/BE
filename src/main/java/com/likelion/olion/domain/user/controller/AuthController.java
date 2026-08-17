@@ -1,5 +1,6 @@
 package com.likelion.olion.domain.user.controller;
 
+import com.likelion.olion.domain.user.dto.request.KakaoLoginRequest;
 import com.likelion.olion.domain.user.dto.request.LoginRequest;
 import com.likelion.olion.domain.user.dto.request.LogoutRequest;
 import com.likelion.olion.domain.user.dto.request.PasswordResetConfirmRequest;
@@ -51,6 +52,14 @@ public class AuthController {
     public ResponseEntity<ApiResponse<LoginResponse>> login(@Valid @RequestBody LoginRequest request) {
         LoginResponse response = authService.login(request);
         return ResponseEntity.ok(ApiResponse.success("로그인에 성공했습니다.", response));
+    }
+
+    @PostMapping("/kakao")
+    @Operation(summary = "카카오 로그인", description = "프론트에서 카카오 SDK로 발급받은 액세스 토큰으로 로그인합니다. "
+            + "처음 로그인하는 사용자는 자동으로 회원가입 처리됩니다. 닉네임/프로필은 이후 온보딩에서 별도로 설정합니다.")
+    public ResponseEntity<ApiResponse<LoginResponse>> kakaoLogin(@Valid @RequestBody KakaoLoginRequest request) {
+        LoginResponse response = authService.kakaoLogin(request);
+        return ResponseEntity.ok(ApiResponse.success("카카오 로그인에 성공했습니다.", response));
     }
 
     @PostMapping("/refresh")
