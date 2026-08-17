@@ -60,6 +60,9 @@ app:
     support-url: ${PUBLIC_SUPPORT_URL}
     terms-url: ${PUBLIC_TERMS_URL}
     privacy-policy-url: ${PUBLIC_PRIVACY_POLICY_URL}
+  # 독서 세션 타이머 스킵을 허용할 테스트 계정 이메일 (쉼표로 구분, 시연/테스트 전용)
+  reading:
+    timer-skip-emails: ${TIMER_SKIP_EMAILS:}
 
 server:
   # 호스트 nginx가 넘긴 X-Forwarded-Proto를 신뢰 → 앱이 요청을 https로 인식(스웨거/리다이렉트 URL 깨짐 방지)

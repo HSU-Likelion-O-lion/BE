@@ -100,6 +100,19 @@ public class ReadingSessionController {
                 readingSessionService.complete(Long.valueOf(principal.getName()), sessionId)));
     }
 
+    @PatchMapping("/{sessionId}/skip")
+    @Operation(summary = "독서 세션 타이머 스킵 (테스트 전용)", description = "허용된 테스트 계정만 사용 가능합니다. "
+            + "목표 시간 도달 여부와 상관없이 세션을 즉시 완료 처리합니다. 시연/테스트 목적 외 사용 금지.")
+    public ResponseEntity<ApiResponse<ReadingSessionCompleteResponse>> skip(
+            Principal principal,
+            @Parameter(description = "독서 세션 ID", example = "100")
+            @PathVariable Long sessionId
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "타이머를 건너뛰고 완료 처리했습니다.",
+                readingSessionService.skip(Long.valueOf(principal.getName()), sessionId)));
+    }
+
     @PatchMapping("/{sessionId}/abandon")
     @Operation(summary = "독서 세션 강제 종료", description = "목표 시간 도달 전에 사용자가 독서 세션을 직접 종료합니다.")
     public ResponseEntity<ApiResponse<ReadingSessionAbandonResponse>> abandon(

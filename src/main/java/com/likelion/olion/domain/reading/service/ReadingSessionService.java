@@ -2,6 +2,7 @@ package com.likelion.olion.domain.reading.service;
 
 import com.likelion.olion.domain.bookshelf.entity.UserBook;
 import com.likelion.olion.domain.bookshelf.repository.UserBookRepository;
+import com.likelion.olion.domain.reading.config.ReadingSessionTestProperties;
 import com.likelion.olion.domain.reading.dto.ReadingSessionStartRequest;
 import com.likelion.olion.domain.reading.dto.ReadingSessionStartResponse;
 import com.likelion.olion.domain.reading.dto.ActiveReadingSessionResponse;
@@ -57,6 +58,7 @@ public class ReadingSessionService {
     private final AiTextGenerator aiTextGenerator;
     private final Clock clock;
     private final UserRepository userRepository;
+    private final ReadingSessionTestProperties testProperties;
 
     public ReadingSessionService(
             ReadingSessionRepository readingSessionRepository,
@@ -64,7 +66,8 @@ public class ReadingSessionService {
             UserBookRepository userBookRepository,
             AiTextGenerator aiTextGenerator,
             Clock clock,
-            UserRepository userRepository
+            UserRepository userRepository,
+            ReadingSessionTestProperties testProperties
     ) {
         this.readingSessionRepository = readingSessionRepository;
         this.readingInterruptionRepository = readingInterruptionRepository;
@@ -72,6 +75,7 @@ public class ReadingSessionService {
         this.aiTextGenerator = aiTextGenerator;
         this.clock = clock;
         this.userRepository = userRepository;
+        this.testProperties = testProperties;
     }
 
     @Autowired
@@ -80,10 +84,11 @@ public class ReadingSessionService {
             ReadingInterruptionRepository readingInterruptionRepository,
             UserBookRepository userBookRepository,
             AiTextGenerator aiTextGenerator,
-            UserRepository userRepository
+            UserRepository userRepository,
+            ReadingSessionTestProperties testProperties
     ) {
         this(readingSessionRepository, readingInterruptionRepository, userBookRepository,
-                aiTextGenerator, Clock.systemUTC(), userRepository);
+                aiTextGenerator, Clock.systemUTC(), userRepository, testProperties);
     }
 
     public ReadingSessionService(
@@ -91,7 +96,7 @@ public class ReadingSessionService {
             UserBookRepository userBookRepository
     ) {
         this(readingSessionRepository, null, userBookRepository, AiTextGenerator.disabled(),
-                Clock.systemUTC(), null);
+                Clock.systemUTC(), null, new ReadingSessionTestProperties());
     }
 
     public ReadingSessionService(
@@ -100,7 +105,7 @@ public class ReadingSessionService {
             UserBookRepository userBookRepository
     ) {
         this(readingSessionRepository, readingInterruptionRepository, userBookRepository,
-                AiTextGenerator.disabled(), Clock.systemUTC(), null);
+                AiTextGenerator.disabled(), Clock.systemUTC(), null, new ReadingSessionTestProperties());
     }
 
     @Transactional
@@ -180,15 +185,38 @@ public class ReadingSessionService {
             throw new BusinessException(ErrorCode.CONFLICT, "목표 시간이 지나지 않은 독서 세션은 완료할 수 없습니다.");
         }
 
-        String bookTitle = session.getUserBook().getBook().getTitle();
+        String aiQuestion = generateReadingQuestion(userId, session.getUserBook().getBook().getTitle());
+        session.complete(aiQuestion, completedAt);
+        return new ReadingSessionCompleteResponse(session.getStatus().name(), session.getAiQuestion());
+    }
+
+    @Transactional
+    public ReadingSessionCompleteResponse skip(Long userId, Long sessionId) {
+        String email = userRepository.findById(userId).map(User::getEmail).orElse(null);
+        if (!testProperties.isSkipAllowed(email)) {
+            throw new BusinessException(ErrorCode.FORBIDDEN);
+        }
+
+        ReadingSession session = readingSessionRepository.findBySessionIdAndUserId(sessionId, userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+
+        if (session.getStatus() != ReadingSessionStatus.IN_PROGRESS
+                && session.getStatus() != ReadingSessionStatus.PAUSED) {
+            throw new BusinessException(ErrorCode.CONFLICT);
+        }
+
+        String aiQuestion = generateReadingQuestion(userId, session.getUserBook().getBook().getTitle());
+        session.complete(aiQuestion, Instant.now(clock));
+        return new ReadingSessionCompleteResponse(session.getStatus().name(), session.getAiQuestion());
+    }
+
+    private String generateReadingQuestion(Long userId, String bookTitle) {
         String prompt = """
                 독서 세션을 마친 사용자에게 보여줄 사유 질문을 한 문장으로 작성하세요.
                 책 제목: %s
                 질문은 정답을 요구하지 않고, 오늘 읽은 내용과 사용자의 삶을 연결하는 따뜻한 한국어 질문이어야 합니다.
                 """.formatted(bookTitle);
-        String aiQuestion = aiTextGenerator.generate(userId, "reading-question", prompt, DEFAULT_AI_QUESTION);
-        session.complete(aiQuestion, completedAt);
-        return new ReadingSessionCompleteResponse(session.getStatus().name(), session.getAiQuestion());
+        return aiTextGenerator.generate(userId, "reading-question", prompt, DEFAULT_AI_QUESTION);
     }
 
     @Transactional
