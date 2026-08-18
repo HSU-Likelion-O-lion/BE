@@ -57,20 +57,20 @@ public class EmotionBookRecommendationService {
     }
 
     private int score(Book book, Set<String> keywords) {
-        String title = normalize(book.getTitle());
-        String author = normalize(book.getAuthor());
         String description = normalize(book.getDescription());
+        String summary = normalize(book.getAiSummary());
+        String title = normalize(book.getTitle());
         int score = 0;
 
         for (String keyword : keywords) {
             if (title.contains(keyword)) {
-                score += 10;
-            }
-            if (author.contains(keyword)) {
-                score += 5;
+                score += 1;
             }
             if (description.contains(keyword)) {
-                score += 3;
+                score += 10;
+            }
+            if (summary.contains(keyword)) {
+                score += 8;
             }
         }
         return score;

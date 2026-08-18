@@ -32,6 +32,9 @@ public class Essay {
 
     private Instant publishedAt;
 
+    @Column(name = "last_regenerated_at")
+    private Instant lastRegeneratedAt;
+
     @Column(nullable = false)
     private Instant createdAt;
 
@@ -68,6 +71,7 @@ public class Essay {
 
     public void retry() {
         this.status = EssayStatus.QUEUED;
+        this.lastRegeneratedAt = Instant.now();
     }
 
     public void cancel() {
@@ -87,5 +91,6 @@ public class Essay {
     public String getAuthorName() { return authorName; }
     public EssayStatus getStatus() { return status; }
     public Instant getPublishedAt() { return publishedAt; }
+    public Instant getLastRegeneratedAt() { return lastRegeneratedAt; }
     public Instant getCreatedAt() { return createdAt; }
 }

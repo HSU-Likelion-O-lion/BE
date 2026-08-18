@@ -24,6 +24,8 @@ public interface EssayRepository extends JpaRepository<Essay, Long> {
             Collection<EssayStatus> statuses
     );
 
+    long countByUserIdAndLastRegeneratedAtAfter(Long userId, Instant since);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select essay from Essay essay where essay.essayId = :essayId")
     Optional<Essay> findByIdForUpdate(@Param("essayId") Long essayId);

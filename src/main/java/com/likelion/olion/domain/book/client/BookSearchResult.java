@@ -20,7 +20,8 @@ public record BookSearchResult(
     }
 
     public boolean hasMissingMetadata() {
-        return isBlank(coverImageUrl) || isBlank(publisher) || isBlank(description) || isBlank(category);
+        return isBlank(title) || isBlank(author) || isBlank(coverImageUrl)
+                || isBlank(publisher) || isBlank(description);
     }
 
     private static boolean isBlank(String value) {

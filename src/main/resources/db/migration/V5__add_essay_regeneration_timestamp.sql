@@ -1,0 +1,2 @@
+ALTER TABLE essays
+    ADD COLUMN IF NOT EXISTS last_regenerated_at TIMESTAMP WITH TIME ZONE;

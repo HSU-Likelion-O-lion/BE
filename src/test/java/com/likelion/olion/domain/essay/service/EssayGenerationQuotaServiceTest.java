@@ -43,4 +43,23 @@ class EssayGenerationQuotaServiceTest {
         assertThatThrownBy(() -> service.validateAvailable(1L))
                 .isInstanceOf(EssayGenerationQuotaService.EssayGenerationQuotaExceededException.class);
     }
+
+    @Test
+    void allowsOneRegenerationPerDay() {
+        given(userRepository.findById(1L)).willReturn(Optional.of(new User("a@a.com", "pw", "reader")));
+        given(essayRepository.countByUserIdAndLastRegeneratedAtAfter(eq(1L), any(Instant.class)))
+                .willReturn(0L);
+
+        assertThatCode(() -> service.validateRegenerationAvailable(1L)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void rejectsSecondRegenerationOnTheSameDay() {
+        given(userRepository.findById(1L)).willReturn(Optional.of(new User("a@a.com", "pw", "reader")));
+        given(essayRepository.countByUserIdAndLastRegeneratedAtAfter(eq(1L), any(Instant.class)))
+                .willReturn(1L);
+
+        assertThatThrownBy(() -> service.validateRegenerationAvailable(1L))
+                .isInstanceOf(EssayGenerationQuotaService.EssayRegenerationQuotaExceededException.class);
+    }
 }
