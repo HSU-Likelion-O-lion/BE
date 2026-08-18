@@ -57,6 +57,11 @@ public class Essay {
         this.status = EssayStatus.COMPLETED;
     }
 
+    public void complete(String generatedTitle) {
+        this.title = generatedTitle;
+        this.status = EssayStatus.COMPLETED;
+    }
+
     public void fail() {
         this.status = EssayStatus.FAILED;
     }
