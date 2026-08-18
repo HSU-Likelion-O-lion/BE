@@ -12,8 +12,8 @@ import java.util.Map;
 
 @Service
 public class BookSummaryService {
-    private static final String PROMPT_VERSION = "v1";
-    private static final int MAX_SUMMARY_LENGTH = 1_500;
+    private static final String PROMPT_VERSION = "v2";
+    private static final int MAX_SUMMARY_LENGTH = 100;
 
     private final BookRepository bookRepository;
     private final AiTextGenerator aiTextGenerator;

@@ -16,7 +16,7 @@ import java.util.Optional;
 @Component
 public class AiEssayEditor {
     private static final int MAX_ATTEMPTS = 2;
-    private static final String PROMPT_VERSION = "v1";
+    private static final String PROMPT_VERSION = "v2";
 
     private final AiTextGenerator aiTextGenerator;
     private final PromptTemplateLoader promptTemplateLoader;

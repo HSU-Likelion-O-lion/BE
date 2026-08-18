@@ -55,9 +55,25 @@ public class EssayGenerationQuotaService {
         }
     }
 
+    public void validateRegenerationAvailable(Long userId) {
+        userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+
+        Instant startOfToday = LocalDate.now(clock).atStartOfDay(ZoneOffset.UTC).toInstant();
+        if (essayRepository.countByUserIdAndLastRegeneratedAtAfter(userId, startOfToday) >= 1) {
+            throw new EssayRegenerationQuotaExceededException();
+        }
+    }
+
     public static class EssayGenerationQuotaExceededException extends RuntimeException {
         public EssayGenerationQuotaExceededException(int limit) {
             super("오늘의 에세이 생성 가능 횟수를 초과했습니다. (최대 " + limit + "회)");
+        }
+    }
+
+    public static class EssayRegenerationQuotaExceededException extends RuntimeException {
+        public EssayRegenerationQuotaExceededException() {
+            super("오늘의 에세이 재생성 가능 횟수를 초과했습니다. (최대 1회)");
         }
     }
 }

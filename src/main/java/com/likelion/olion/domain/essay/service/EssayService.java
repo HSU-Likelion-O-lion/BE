@@ -124,7 +124,7 @@ public class EssayService {
         if (essay.getStatus() != EssayStatus.FAILED) {
             throw new BusinessException(ErrorCode.CONFLICT, "실패 상태의 작업만 재시도할 수 있습니다.");
         }
-        validateQuota(userId);
+        validateRegenerationQuota(userId);
 
         essay.retry();
         eventPublisher.publishEvent(new EssayGenerationRequestedEvent(essay.getEssayId()));
@@ -145,6 +145,19 @@ public class EssayService {
         try {
             essayGenerationQuotaService.validateAvailable(userId);
         } catch (EssayGenerationQuotaService.EssayGenerationQuotaExceededException exception) {
+            throw new BusinessException(ErrorCode.TOO_MANY_REQUESTS, exception.getMessage());
+        } catch (IllegalArgumentException exception) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, exception.getMessage());
+        }
+    }
+
+    private void validateRegenerationQuota(Long userId) {
+        if (essayGenerationQuotaService == null) {
+            return;
+        }
+        try {
+            essayGenerationQuotaService.validateRegenerationAvailable(userId);
+        } catch (EssayGenerationQuotaService.EssayRegenerationQuotaExceededException exception) {
             throw new BusinessException(ErrorCode.TOO_MANY_REQUESTS, exception.getMessage());
         } catch (IllegalArgumentException exception) {
             throw new BusinessException(ErrorCode.NOT_FOUND, exception.getMessage());

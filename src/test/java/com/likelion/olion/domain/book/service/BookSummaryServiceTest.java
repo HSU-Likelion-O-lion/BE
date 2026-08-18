@@ -33,7 +33,7 @@ class BookSummaryServiceTest {
         assertThat(summary).isEqualTo("AI가 요약한 책 소개");
         assertThat(book.getAiSummary()).isEqualTo("AI가 요약한 책 소개");
         assertThat(book.getSummaryStatus()).isEqualTo(BookSummaryStatus.COMPLETED);
-        assertThat(book.getSummaryPromptVersion()).isEqualTo("v1");
+        assertThat(book.getSummaryPromptVersion()).isEqualTo("v2");
         verify(bookRepository).save(book);
     }
 
@@ -49,5 +49,19 @@ class BookSummaryServiceTest {
 
         assertThat(book.getAiSummary()).isEqualTo("원본 책 소개");
         assertThat(book.getSummaryStatus()).isEqualTo(BookSummaryStatus.FALLBACK);
+    }
+
+    @Test
+    void limitsSummaryToOneHundredCharacters() {
+        Book book = Book.fromExternal(
+                "아몬드", "손원평", null, "창비", "원본 책 소개", null,
+                "ALADIN", "9788936434267", "123", "소설");
+        given(aiTextGenerator.generate(eq(null), eq("book-summary"), anyString(), eq("원본 책 소개")))
+                .willReturn("가".repeat(101));
+
+        service.ensureSummary(book);
+
+        assertThat(book.getAiSummary()).hasSize(100);
+        assertThat(book.getSummaryPromptVersion()).isEqualTo("v2");
     }
 }

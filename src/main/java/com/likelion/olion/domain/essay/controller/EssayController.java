@@ -38,7 +38,7 @@ public class EssayController {
     }
 
     @PostMapping
-    @Operation(summary = "에세이 생성 요청", description = "선택한 사유들로 AI 편집자에게 에세이 목차 구성을 비동기로 요청합니다.")
+    @Operation(summary = "에세이 생성 요청", description = "선택한 사유 30개로 2,000~2,500자 내외의 1인칭 회고 에세이 생성을 비동기로 요청합니다.")
     public ResponseEntity<ApiResponse<EssayCreateResponse>> create(
             Principal principal,
             @Valid @RequestBody EssayCreateRequest request
@@ -66,7 +66,7 @@ public class EssayController {
     }
 
     @PostMapping("/{essayId}/retry")
-    @Operation(summary = "실패한 작업 재시도", description = "FAILED 상태의 에세이 생성 작업을 다시 시도합니다.")
+    @Operation(summary = "실패한 작업 재생성", description = "FAILED 상태의 에세이를 다시 생성합니다. 사용자별 하루 1회로 제한됩니다.")
     public ResponseEntity<ApiResponse<EssayJobStatusResponse>> retry(
             Principal principal,
             @PathVariable Long essayId

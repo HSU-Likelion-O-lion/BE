@@ -20,6 +20,7 @@ public class EssayGenerationResponseParser {
     private static final int MAX_TITLE_LENGTH = 100;
     private static final int MIN_CONTENT_LENGTH = 3;
     private static final int MAX_CONTENT_LENGTH = 500;
+    private static final int MAX_ESSAY_LENGTH = 2_500;
 
     private final ObjectMapper objectMapper;
 
@@ -55,6 +56,7 @@ public class EssayGenerationResponseParser {
             }
 
             List<EssayEditor.ChapterDraft> chapters = new ArrayList<>();
+            int totalContentLength = 0;
             for (JsonNode chapterNode : chapterNodes) {
                 if (!chapterNode.isObject()) {
                     return Optional.empty();
@@ -65,6 +67,10 @@ public class EssayGenerationResponseParser {
                 if (!isValidTitle(chapterTitle) || !isValidContent(content)
                         || reflectionIdNodes == null || !reflectionIdNodes.isArray()
                         || reflectionIdNodes.isEmpty()) {
+                    return Optional.empty();
+                }
+                totalContentLength += content.length();
+                if (totalContentLength > MAX_ESSAY_LENGTH) {
                     return Optional.empty();
                 }
 
