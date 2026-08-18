@@ -30,17 +30,22 @@ public class EssayChapter {
     @Column(nullable = false)
     private String title;
 
+    @Column(nullable = false, columnDefinition = "TEXT")
+    private String content;
+
     protected EssayChapter() {
     }
 
-    public EssayChapter(Essay essay, Integer chapterNo, String title) {
+    public EssayChapter(Essay essay, Integer chapterNo, String title, String content) {
         this.essay = essay;
         this.chapterNo = chapterNo;
         this.title = title;
+        this.content = content;
     }
 
     public Long getChapterId() { return chapterId; }
     public Essay getEssay() { return essay; }
     public Integer getChapterNo() { return chapterNo; }
     public String getTitle() { return title; }
+    public String getContent() { return content; }
 }
