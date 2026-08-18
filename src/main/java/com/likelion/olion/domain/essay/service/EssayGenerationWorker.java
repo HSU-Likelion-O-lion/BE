@@ -68,7 +68,13 @@ public class EssayGenerationWorker {
 
             int chapterNo = 1;
             for (EssayEditor.ChapterDraft draft : chapters) {
-                EssayChapter chapter = essayChapterRepository.save(new EssayChapter(essay, chapterNo, draft.title()));
+                String content = draft.reflections().stream()
+                        .map(Reflection::getContent)
+                        .filter(value -> value != null && !value.isBlank())
+                        .reduce((left, right) -> left + "\n\n" + right)
+                        .orElse("");
+                EssayChapter chapter = essayChapterRepository.save(
+                        new EssayChapter(essay, chapterNo, draft.title(), content));
                 for (Reflection reflection : draft.reflections()) {
                     reflection.assignToChapter(chapter);
                 }
