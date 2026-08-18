@@ -58,29 +58,24 @@ public class EssayGenerationWorker {
         essay.startProcessing();
         try {
             List<Reflection> reflections = reflectionRepository.findByEssay_EssayId(essayId);
-            List<EssayEditor.ChapterDraft> chapters = aiEssayEditor == null
-                    ? essayEditor.organize(reflections)
-                    : aiEssayEditor.organize(essay.getUserId(), reflections, essayEditor);
+            EssayEditor.EssayDraft generated = aiEssayEditor == null
+                    ? new EssayEditor.EssayDraft("나의 독서 에세이", essayEditor.organize(reflections))
+                    : aiEssayEditor.generate(essay.getUserId(), reflections);
 
             if (essay.getStatus() == EssayStatus.CANCELED) {
                 return;
             }
 
             int chapterNo = 1;
-            for (EssayEditor.ChapterDraft draft : chapters) {
-                String content = draft.reflections().stream()
-                        .map(Reflection::getContent)
-                        .filter(value -> value != null && !value.isBlank())
-                        .reduce((left, right) -> left + "\n\n" + right)
-                        .orElse("");
+            for (EssayEditor.ChapterDraft draft : generated.chapters()) {
                 EssayChapter chapter = essayChapterRepository.save(
-                        new EssayChapter(essay, chapterNo, draft.title(), content));
+                        new EssayChapter(essay, chapterNo, draft.title(), draft.content()));
                 for (Reflection reflection : draft.reflections()) {
                     reflection.assignToChapter(chapter);
                 }
                 chapterNo++;
             }
-            essay.complete();
+            essay.complete(generated.title());
         } catch (RuntimeException exception) {
             if (essay.getStatus() != EssayStatus.CANCELED) {
                 essay.fail();

@@ -39,10 +39,12 @@ public class EssayPdfGenerator {
             for (EssayDetailResponse.Chapter chapter : detail.chapters()) {
                 document.add(new Paragraph(chapter.title(), chapterFont));
                 document.add(Chunk.NEWLINE);
-                for (String content : chapter.reflections()) {
-                    document.add(new Paragraph(content, bodyFont));
-                    document.add(Chunk.NEWLINE);
+                String content = chapter.content();
+                if (content == null || content.isBlank()) {
+                    content = String.join("\n\n", chapter.reflections());
                 }
+                document.add(new Paragraph(content, bodyFont));
+                document.add(Chunk.NEWLINE);
             }
 
             document.close();

@@ -38,7 +38,11 @@ public record EssayDetailResponse(
     public record Chapter(
             @Schema(description = "장 번호", example = "1") Integer chapterNo,
             @Schema(description = "장 제목", example = "1장") String title,
+            @Schema(description = "AI가 생성한 장 본문") String content,
             @Schema(description = "해당 장에 속한 사유 본문 목록") List<String> reflections
     ) {
+        public Chapter(Integer chapterNo, String title, List<String> reflections) {
+            this(chapterNo, title, null, reflections);
+        }
     }
 }

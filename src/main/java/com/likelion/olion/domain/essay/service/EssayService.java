@@ -182,9 +182,10 @@ public class EssayService {
                 .map(chapter -> new EssayDraftResponse.Chapter(
                         chapter.getChapterNo(),
                         chapter.getTitle(),
+                        chapter.getContent(),
                         reflectionIdsByChapter.getOrDefault(chapter.getChapterId(), List.of())))
                 .toList();
-        return new EssayDraftResponse(chapterResponses);
+        return new EssayDraftResponse(essay.getTitle(), chapterResponses);
     }
 
     @Transactional(readOnly = true)
@@ -207,6 +208,7 @@ public class EssayService {
                 .map(chapter -> new EssayDetailResponse.Chapter(
                         chapter.getChapterNo(),
                         chapter.getTitle(),
+                        chapter.getContent(),
                         contentsByChapter.getOrDefault(chapter.getChapterId(), List.of())))
                 .toList();
         return EssayDetailResponse.of(essay, chapterResponses);
