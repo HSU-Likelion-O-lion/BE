@@ -15,8 +15,12 @@ public record BookDetailResponse(
         String coverImageUrl,
         @Schema(description = "출판사", example = "열린책들")
         String publisher,
-        @Schema(description = "도서 설명")
+        @Schema(description = "외부 API에서 받은 원본 도서 설명")
         String description,
+        @Schema(description = "AI가 요약한 도서 소개")
+        String aiSummary,
+        @Schema(description = "도서 키워드")
+        String keywords,
         @Schema(description = "외부 도서 상세 URL")
         String externalUrl,
         @Schema(description = "도서 정보 제공자", example = "KAKAO")
@@ -30,6 +34,8 @@ public record BookDetailResponse(
                 book.getCoverImageUrl(),
                 book.getPublisher(),
                 book.getDescription(),
+                book.getAiSummary(),
+                book.getKeywords(),
                 book.getExternalUrl(),
                 book.getProvider()
         );

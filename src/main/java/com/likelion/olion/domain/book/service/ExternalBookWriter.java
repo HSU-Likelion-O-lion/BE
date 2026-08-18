@@ -62,9 +62,20 @@ public class ExternalBookWriter {
             }
         }
         if (hasText(result.externalUrl())) {
-            return bookRepository.findByExternalUrl(result.externalUrl());
+            Optional<Book> byExternalUrl = bookRepository.findByExternalUrl(result.externalUrl());
+            if (byExternalUrl.isPresent()) {
+                return byExternalUrl;
+            }
+        }
+        if (hasText(result.title()) && hasText(result.author())) {
+            return bookRepository.findFirstByTitleIgnoreCaseAndAuthorIgnoreCase(
+                    normalizeText(result.title()), normalizeText(result.author()));
         }
         return Optional.empty();
+    }
+
+    private String normalizeText(String value) {
+        return value.trim().replaceAll("\\s+", " ");
     }
 
     private boolean hasText(String value) {
