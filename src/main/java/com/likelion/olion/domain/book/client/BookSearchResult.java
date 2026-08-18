@@ -14,12 +14,29 @@ public record BookSearchResult(
 ) {
     public BookSearchResult {
         externalUrl = blankToNull(externalUrl);
-        isbn13 = blankToNull(isbn13);
+        isbn13 = normalizeIsbn13(isbn13);
         providerBookId = blankToNull(providerBookId);
         category = blankToNull(category);
     }
 
+    public boolean hasMissingMetadata() {
+        return isBlank(coverImageUrl) || isBlank(publisher) || isBlank(description) || isBlank(category);
+    }
+
+    private static boolean isBlank(String value) {
+        return value == null || value.isBlank();
+    }
+
     private static String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value;
+    }
+
+    private static String normalizeIsbn13(String value) {
+        String normalized = blankToNull(value);
+        if (normalized == null) {
+            return null;
+        }
+        normalized = normalized.replaceAll("[^0-9]", "");
+        return normalized.length() == 13 ? normalized : null;
     }
 }

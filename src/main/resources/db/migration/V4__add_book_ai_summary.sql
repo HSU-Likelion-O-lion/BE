@@ -1,0 +1,11 @@
+ALTER TABLE books
+    ADD COLUMN IF NOT EXISTS keywords TEXT;
+
+ALTER TABLE books
+    ADD COLUMN IF NOT EXISTS ai_summary TEXT;
+
+ALTER TABLE books
+    ADD COLUMN IF NOT EXISTS summary_prompt_version VARCHAR(30);
+
+ALTER TABLE books
+    ADD COLUMN IF NOT EXISTS summary_status VARCHAR(20);

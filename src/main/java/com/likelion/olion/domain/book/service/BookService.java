@@ -19,27 +19,43 @@ public class BookService {
     private final BookRepository bookRepository;
     private final List<BookSearchProvider> searchProviders;
     private final ExternalBookSyncService externalBookSyncService;
+    private final BookSummaryService bookSummaryService;
     private static final Logger log = Logger.getLogger(BookService.class.getName());
 
     public BookService(BookRepository bookRepository) {
-        this(bookRepository, List.of(), null);
+        this(bookRepository, List.of(), null, null);
     }
 
     @Autowired
     public BookService(
             BookRepository bookRepository,
             List<BookSearchProvider> searchProviders,
-            ExternalBookSyncService externalBookSyncService
+            ExternalBookSyncService externalBookSyncService,
+            BookSummaryService bookSummaryService
     ) {
         this.bookRepository = bookRepository;
         this.searchProviders = searchProviders;
         this.externalBookSyncService = externalBookSyncService;
+        this.bookSummaryService = bookSummaryService;
     }
 
-    @Transactional(readOnly = true)
+    public BookService(
+            BookRepository bookRepository,
+            List<BookSearchProvider> searchProviders,
+            ExternalBookSyncService externalBookSyncService
+    ) {
+        this(bookRepository, searchProviders, externalBookSyncService, null);
+    }
+
+    @Transactional
     public BookDetailResponse getBook(Long bookId) {
         return bookRepository.findById(bookId)
-                .map(BookDetailResponse::from)
+                .map(book -> {
+                    if (bookSummaryService != null) {
+                        bookSummaryService.ensureSummary(book);
+                    }
+                    return BookDetailResponse.from(book);
+                })
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "도서를 찾을 수 없습니다."));
     }
 
@@ -49,7 +65,34 @@ public class BookService {
         }
 
         String normalizedQuery = query.trim();
-        for (BookSearchProvider provider : searchProviders) {
+        if (searchProviders.isEmpty()) {
+            return BookSearchResponse.from(bookRepository
+                    .findByTitleContainingIgnoreCaseOrAuthorContainingIgnoreCase(normalizedQuery, normalizedQuery));
+        }
+
+        BookSearchProvider primaryProvider = searchProviders.getFirst();
+        try {
+            List<BookSearchResult> primaryResults = primaryProvider.search(normalizedQuery);
+            if (!primaryResults.isEmpty()) {
+                List<BookSearchResult> mergedResults = primaryResults;
+                for (BookSearchProvider supplementProvider : searchProviders.subList(1, searchProviders.size())) {
+                    if (mergedResults.stream().noneMatch(BookSearchResult::hasMissingMetadata)) {
+                        break;
+                    }
+                    try {
+                        mergedResults = BookMetadataResolver.merge(
+                                mergedResults, supplementProvider.search(normalizedQuery));
+                    } catch (RuntimeException exception) {
+                        log.warning("Book supplement provider failed: " + exception.getMessage());
+                    }
+                }
+                return BookSearchResponse.from(externalBookSyncService.synchronize(mergedResults));
+            }
+        } catch (RuntimeException exception) {
+            log.warning("Book primary provider search failed: " + exception.getMessage());
+        }
+
+        for (BookSearchProvider provider : searchProviders.subList(1, searchProviders.size())) {
             try {
                 List<BookSearchResult> results = provider.search(normalizedQuery);
                 if (!results.isEmpty()) {
