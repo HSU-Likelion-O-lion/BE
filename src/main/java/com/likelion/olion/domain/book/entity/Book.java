@@ -2,6 +2,8 @@ package com.likelion.olion.domain.book.entity;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.Column;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -27,6 +29,15 @@ public class Book {
     private String coverImageUrl;
     private String publisher;
     private String description;
+    @Column(name = "keywords", columnDefinition = "TEXT")
+    private String keywords;
+    @Column(name = "ai_summary", columnDefinition = "TEXT")
+    private String aiSummary;
+    @Column(name = "summary_prompt_version", length = 30)
+    private String summaryPromptVersion;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "summary_status", length = 20)
+    private BookSummaryStatus summaryStatus;
     @Column(name = "external_url")
     private String externalUrl;
     private String provider;
@@ -57,12 +68,20 @@ public class Book {
         book.coverImageUrl = coverImageUrl;
         book.publisher = publisher;
         book.description = description;
+        book.keywords = category;
+        book.summaryStatus = BookSummaryStatus.NOT_GENERATED;
         book.externalUrl = externalUrl;
         book.provider = provider;
         book.isbn13 = isbn13;
         book.providerBookId = providerBookId;
         book.category = category;
         return book;
+    }
+
+    public void updateAiSummary(String summary, String promptVersion, BookSummaryStatus status) {
+        this.aiSummary = summary;
+        this.summaryPromptVersion = promptVersion;
+        this.summaryStatus = status;
     }
 
     public void updateExternalMetadata(
@@ -82,15 +101,19 @@ public class Book {
         this.coverImageUrl = prefer(coverImageUrl, this.coverImageUrl);
         this.publisher = prefer(publisher, this.publisher);
         this.description = prefer(description, this.description);
+        this.keywords = prefer(category, this.keywords);
         this.isbn13 = prefer(isbn13, this.isbn13);
         this.category = prefer(category, this.category);
-        if (this.provider == null || this.provider.isBlank()) {
+        if (this.provider == null || this.provider.isBlank()
+                || isHigherPriorityProvider(provider, this.provider)) {
             this.provider = provider;
-        }
-        if (this.provider != null && this.provider.equals(provider)) {
             this.externalUrl = prefer(externalUrl, this.externalUrl);
             this.providerBookId = prefer(providerBookId, this.providerBookId);
         }
+    }
+
+    private static boolean isHigherPriorityProvider(String candidate, String current) {
+        return "ALADIN".equalsIgnoreCase(candidate) && "KAKAO".equalsIgnoreCase(current);
     }
 
     private static String prefer(String candidate, String current) {
@@ -103,6 +126,10 @@ public class Book {
     public String getCoverImageUrl() { return coverImageUrl; }
     public String getPublisher() { return publisher; }
     public String getDescription() { return description; }
+    public String getKeywords() { return keywords; }
+    public String getAiSummary() { return aiSummary; }
+    public String getSummaryPromptVersion() { return summaryPromptVersion; }
+    public BookSummaryStatus getSummaryStatus() { return summaryStatus; }
     public String getExternalUrl() { return externalUrl; }
     public String getProvider() { return provider; }
     public String getIsbn13() { return isbn13; }

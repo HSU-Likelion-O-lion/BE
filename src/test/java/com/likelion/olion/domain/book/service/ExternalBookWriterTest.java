@@ -51,6 +51,22 @@ class ExternalBookWriterTest {
         assertThat(saved.getProviderBookId()).isEqualTo("8936434264");
     }
 
+    @Test
+    void ISBN이_없으면_정규화한_제목과_작가로_기존_도서를_찾는다() {
+        Book existing = Book.fromExternal(
+                "아몬드", "손원평", null, null, null,
+                null, "ALADIN", null, null, null);
+        BookSearchResult result = new BookSearchResult(
+                " 아몬드 ", " 손원평 ", null, "창비", null,
+                null, "ALADIN", null, "123", null);
+        when(repository.findFirstByTitleIgnoreCaseAndAuthorIgnoreCase("아몬드", "손원평"))
+                .thenReturn(Optional.of(existing));
+        when(repository.saveAndFlush(existing)).thenReturn(existing);
+
+        assertThat(writer.saveOrUpdate(result)).isSameAs(existing);
+        verify(repository).findFirstByTitleIgnoreCaseAndAuthorIgnoreCase("아몬드", "손원평");
+    }
+
     private BookSearchResult result() {
         return new BookSearchResult(
                 "아몬드", "손원평", "https://image.example/almond.jpg", "창비",

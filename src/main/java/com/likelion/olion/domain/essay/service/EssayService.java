@@ -38,6 +38,7 @@ public class EssayService {
     private final ApplicationEventPublisher eventPublisher;
     private final EssayPdfGenerator essayPdfGenerator;
     private final UserRepository userRepository;
+    private final EssayGenerationQuotaService essayGenerationQuotaService;
 
     @Autowired
     public EssayService(
@@ -46,7 +47,8 @@ public class EssayService {
             ReflectionRepository reflectionRepository,
             ApplicationEventPublisher eventPublisher,
             EssayPdfGenerator essayPdfGenerator,
-            UserRepository userRepository
+            UserRepository userRepository,
+            EssayGenerationQuotaService essayGenerationQuotaService
     ) {
         this.essayRepository = essayRepository;
         this.essayChapterRepository = essayChapterRepository;
@@ -54,6 +56,7 @@ public class EssayService {
         this.eventPublisher = eventPublisher;
         this.essayPdfGenerator = essayPdfGenerator;
         this.userRepository = userRepository;
+        this.essayGenerationQuotaService = essayGenerationQuotaService;
     }
 
     public EssayService(
@@ -64,11 +67,25 @@ public class EssayService {
             EssayPdfGenerator essayPdfGenerator
     ) {
         this(essayRepository, essayChapterRepository, reflectionRepository, eventPublisher,
-                essayPdfGenerator, null);
+                essayPdfGenerator, null, null);
+    }
+
+    public EssayService(
+            EssayRepository essayRepository,
+            EssayChapterRepository essayChapterRepository,
+            ReflectionRepository reflectionRepository,
+            ApplicationEventPublisher eventPublisher,
+            EssayPdfGenerator essayPdfGenerator,
+            UserRepository userRepository
+    ) {
+        this(essayRepository, essayChapterRepository, reflectionRepository, eventPublisher,
+                essayPdfGenerator, userRepository, null);
     }
 
     @Transactional
     public EssayCreateResponse create(Long userId, EssayCreateRequest request) {
+        validateReflectionSelection(request);
+        validateQuota(userId);
         List<Reflection> reflections = reflectionRepository
                 .findByReflectionIdInAndUserId(request.reflectionIds(), userId);
         if (reflections.size() != request.reflectionIds().size()) {
@@ -107,10 +124,44 @@ public class EssayService {
         if (essay.getStatus() != EssayStatus.FAILED) {
             throw new BusinessException(ErrorCode.CONFLICT, "실패 상태의 작업만 재시도할 수 있습니다.");
         }
+        validateRegenerationQuota(userId);
 
         essay.retry();
         eventPublisher.publishEvent(new EssayGenerationRequestedEvent(essay.getEssayId()));
         return new EssayJobStatusResponse(essay.getStatus());
+    }
+
+    private void validateReflectionSelection(EssayCreateRequest request) {
+        if (request.reflectionIds() == null || request.reflectionIds().size() != 30
+                || request.reflectionIds().stream().distinct().count() != 30) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "에세이 생성에는 중복 없는 사유 30개가 필요합니다.");
+        }
+    }
+
+    private void validateQuota(Long userId) {
+        if (essayGenerationQuotaService == null) {
+            return;
+        }
+        try {
+            essayGenerationQuotaService.validateAvailable(userId);
+        } catch (EssayGenerationQuotaService.EssayGenerationQuotaExceededException exception) {
+            throw new BusinessException(ErrorCode.TOO_MANY_REQUESTS, exception.getMessage());
+        } catch (IllegalArgumentException exception) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, exception.getMessage());
+        }
+    }
+
+    private void validateRegenerationQuota(Long userId) {
+        if (essayGenerationQuotaService == null) {
+            return;
+        }
+        try {
+            essayGenerationQuotaService.validateRegenerationAvailable(userId);
+        } catch (EssayGenerationQuotaService.EssayRegenerationQuotaExceededException exception) {
+            throw new BusinessException(ErrorCode.TOO_MANY_REQUESTS, exception.getMessage());
+        } catch (IllegalArgumentException exception) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, exception.getMessage());
+        }
     }
 
     @Transactional
@@ -144,9 +195,10 @@ public class EssayService {
                 .map(chapter -> new EssayDraftResponse.Chapter(
                         chapter.getChapterNo(),
                         chapter.getTitle(),
+                        chapter.getContent(),
                         reflectionIdsByChapter.getOrDefault(chapter.getChapterId(), List.of())))
                 .toList();
-        return new EssayDraftResponse(chapterResponses);
+        return new EssayDraftResponse(essay.getTitle(), chapterResponses);
     }
 
     @Transactional(readOnly = true)
@@ -169,6 +221,7 @@ public class EssayService {
                 .map(chapter -> new EssayDetailResponse.Chapter(
                         chapter.getChapterNo(),
                         chapter.getTitle(),
+                        chapter.getContent(),
                         contentsByChapter.getOrDefault(chapter.getChapterId(), List.of())))
                 .toList();
         return EssayDetailResponse.of(essay, chapterResponses);

@@ -1,0 +1,2 @@
+ALTER TABLE essay_chapters
+    ADD COLUMN IF NOT EXISTS content TEXT NOT NULL DEFAULT '';

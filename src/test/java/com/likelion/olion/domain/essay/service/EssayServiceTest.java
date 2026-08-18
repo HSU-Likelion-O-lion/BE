@@ -65,7 +65,7 @@ class EssayServiceTest {
 
     @Test
     void createsEssayAndPublishesEvent() {
-        List<Long> ids = List.of(1L, 2L, 3L);
+        List<Long> ids = java.util.stream.LongStream.rangeClosed(1, 30).boxed().toList();
         List<Reflection> reflections = ids.stream()
                 .map(id -> new Reflection(1L, mockSession(), "사유 " + id))
                 .toList();
@@ -88,9 +88,27 @@ class EssayServiceTest {
 
     @Test
     void rejectsWhenSomeReflectionsNotOwnedOrMissing() {
-        List<Long> ids = List.of(1L, 2L, 3L);
+        List<Long> ids = java.util.stream.LongStream.rangeClosed(1, 30).boxed().toList();
         given(reflectionRepository.findByReflectionIdInAndUserId(ids, 1L))
                 .willReturn(List.of(new Reflection(1L, mockSession(), "사유 1")));
+
+        assertThatThrownBy(() -> service.create(1L, new EssayCreateRequest(ids)))
+                .isInstanceOf(BusinessException.class);
+    }
+
+    @Test
+    void rejectsWhenReflectionCountIsNotExactlyThirty() {
+        List<Long> ids = java.util.stream.LongStream.rangeClosed(1, 31).boxed().toList();
+
+        assertThatThrownBy(() -> service.create(1L, new EssayCreateRequest(ids)))
+                .isInstanceOf(BusinessException.class);
+    }
+
+    @Test
+    void rejectsWhenReflectionIdsContainDuplicates() {
+        List<Long> ids = new java.util.ArrayList<>(
+                java.util.stream.LongStream.rangeClosed(1, 29).boxed().toList());
+        ids.add(29L);
 
         assertThatThrownBy(() -> service.create(1L, new EssayCreateRequest(ids)))
                 .isInstanceOf(BusinessException.class);
@@ -155,7 +173,7 @@ class EssayServiceTest {
         essay.startProcessing();
         essay.complete();
         ReflectionTestUtils.setField(essay, "essayId", 7L);
-        EssayChapter chapter = new EssayChapter(essay, 1, "1장");
+        EssayChapter chapter = new EssayChapter(essay, 1, "1장", "본문");
         ReflectionTestUtils.setField(chapter, "chapterId", 100L);
         Reflection reflection = new Reflection(1L, mockSession(), "사유 1");
         ReflectionTestUtils.setField(reflection, "reflectionId", 88L);
@@ -169,6 +187,7 @@ class EssayServiceTest {
 
         assertThat(response.chapters()).hasSize(1);
         assertThat(response.chapters().get(0).title()).isEqualTo("1장");
+        assertThat(chapter.getContent()).isEqualTo("본문");
         assertThat(response.chapters().get(0).reflectionIds()).containsExactly(88L);
     }
 
@@ -186,7 +205,7 @@ class EssayServiceTest {
         essay.startProcessing();
         essay.complete();
         ReflectionTestUtils.setField(essay, "essayId", 7L);
-        EssayChapter chapter = new EssayChapter(essay, 1, "1장");
+        EssayChapter chapter = new EssayChapter(essay, 1, "1장", "본문");
         ReflectionTestUtils.setField(chapter, "chapterId", 100L);
         Reflection reflection = new Reflection(1L, mockSession(), "사유 1");
         ReflectionTestUtils.setField(reflection, "reflectionId", 88L);

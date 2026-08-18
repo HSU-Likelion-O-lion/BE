@@ -26,7 +26,7 @@ public record BookSearchResponse(
             String coverImageUrl,
             @Schema(description = "출판사", example = "열린책들")
             String publisher,
-            @Schema(description = "장르/분류 (알라딘에서 가져온 경우에만 존재, 그 외 null)", example = "소설/영미소설")
+            @Schema(description = "장르/분류 (추천 보조 데이터, 없을 수 있음)", example = "소설/영미소설")
             String category
     ) {
         private static BookSummary from(Book book) {
