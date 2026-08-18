@@ -14,6 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
 class BookSearchServiceTest {
@@ -97,5 +98,51 @@ class BookSearchServiceTest {
 
         assertThat(response.books()).isEmpty();
         verify(repository).findByTitleContainingIgnoreCaseOrAuthorContainingIgnoreCase("아몬드", "아몬드");
+    }
+
+    @Test
+    void Aladin을_우선하고_동일_ISBN의_Kakao_누락_필드만_보완한다() {
+        BookSearchProvider aladin = mock(BookSearchProvider.class);
+        BookSearchProvider kakao = mock(BookSearchProvider.class);
+        ExternalBookSyncService syncService = mock(ExternalBookSyncService.class);
+        BookService externalService = new BookService(repository, List.of(aladin, kakao), syncService);
+        BookSearchResult aladinResult = new BookSearchResult(
+                "아몬드", "손원평", null, "창비", "알라딘 소개", "aladin-url",
+                "ALADIN", "9788936434267", "123", "소설");
+        BookSearchResult kakaoResult = new BookSearchResult(
+                "아몬드", "손원평", "kakao-image", "카카오출판사", "카카오 소개", "kakao-url",
+                "KAKAO", "9788936434267", "isbn-id", null);
+        Book savedBook = mock(Book.class);
+        when(aladin.search("아몬드")).thenReturn(List.of(aladinResult));
+        when(kakao.search("아몬드")).thenReturn(List.of(kakaoResult));
+        when(syncService.synchronize(List.of(new BookSearchResult(
+                "아몬드", "손원평", "kakao-image", "창비", "알라딘 소개", "aladin-url",
+                "ALADIN", "9788936434267", "123", "소설"))))
+                .thenReturn(List.of(savedBook));
+
+        externalService.searchBooks("아몬드");
+
+        verify(kakao).search("아몬드");
+        verify(syncService).synchronize(List.of(new BookSearchResult(
+                "아몬드", "손원평", "kakao-image", "창비", "알라딘 소개", "aladin-url",
+                "ALADIN", "9788936434267", "123", "소설")));
+    }
+
+    @Test
+    void Aladin_필수_필드가_충분하면_Kakao를_호출하지_않는다() {
+        BookSearchProvider aladin = mock(BookSearchProvider.class);
+        BookSearchProvider kakao = mock(BookSearchProvider.class);
+        ExternalBookSyncService syncService = mock(ExternalBookSyncService.class);
+        BookService externalService = new BookService(repository, List.of(aladin, kakao), syncService);
+        BookSearchResult result = new BookSearchResult(
+                "아몬드", "손원평", "image", "창비", "소개", "url",
+                "ALADIN", "9788936434267", "123", "소설");
+        when(aladin.search("아몬드")).thenReturn(List.of(result));
+        when(syncService.synchronize(List.of(result))).thenReturn(List.of(mock(Book.class)));
+
+        externalService.searchBooks("아몬드");
+
+        verify(kakao, never()).search("아몬드");
+        verify(syncService).synchronize(List.of(result));
     }
 }
