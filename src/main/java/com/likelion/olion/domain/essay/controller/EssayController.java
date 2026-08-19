@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.security.Principal;
@@ -107,12 +108,14 @@ public class EssayController {
     }
 
     @GetMapping("/{essayId}/download")
-    @Operation(summary = "에세이 PDF 다운로드", description = "발행되었거나 편집이 완료된 에세이를 PDF 파일로 다운로드합니다.")
+    @Operation(summary = "에세이 PDF 다운로드", description = "발행되었거나 편집이 완료된 에세이를 PDF 파일로 다운로드합니다. "
+            + "PDF 배경에는 기본적으로 마스코트 워터마크가 표시되며, PRO 플랜 사용자는 removeWatermark=true로 워터마크를 제거할 수 있습니다.")
     public ResponseEntity<byte[]> download(
             Principal principal,
-            @PathVariable Long essayId
+            @PathVariable Long essayId,
+            @RequestParam(defaultValue = "false") boolean removeWatermark
     ) {
-        byte[] pdf = essayService.downloadPdf(Long.valueOf(principal.getName()), essayId);
+        byte[] pdf = essayService.downloadPdf(Long.valueOf(principal.getName()), essayId, removeWatermark);
         ContentDisposition disposition = ContentDisposition.attachment()
                 .filename("essay-" + essayId + ".pdf")
                 .build();

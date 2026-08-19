@@ -16,6 +16,7 @@ import com.likelion.olion.domain.essay.repository.EssayChapterRepository;
 import com.likelion.olion.domain.essay.repository.EssayRepository;
 import com.likelion.olion.domain.reflection.entity.Reflection;
 import com.likelion.olion.domain.reflection.repository.ReflectionRepository;
+import com.likelion.olion.domain.user.entity.SubscriptionPlan;
 import com.likelion.olion.domain.user.entity.User;
 import com.likelion.olion.domain.user.repository.UserRepository;
 import com.likelion.olion.global.common.exception.BusinessException;
@@ -229,7 +230,23 @@ public class EssayService {
 
     @Transactional(readOnly = true)
     public byte[] downloadPdf(Long userId, Long essayId) {
-        return essayPdfGenerator.generate(getDetail(userId, essayId));
+        return downloadPdf(userId, essayId, false);
+    }
+
+    @Transactional(readOnly = true)
+    public byte[] downloadPdf(Long userId, Long essayId, boolean removeWatermark) {
+        EssayDetailResponse detail = getDetail(userId, essayId);
+        boolean showWatermark = !(removeWatermark && isProPlan(userId));
+        return essayPdfGenerator.generate(detail, showWatermark);
+    }
+
+    private boolean isProPlan(Long userId) {
+        if (userRepository == null) {
+            return false;
+        }
+        return userRepository.findById(userId)
+                .map(user -> user.getPlan() == SubscriptionPlan.PRO)
+                .orElse(false);
     }
 
     @Transactional
