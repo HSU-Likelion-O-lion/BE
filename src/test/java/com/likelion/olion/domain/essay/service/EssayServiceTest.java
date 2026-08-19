@@ -18,6 +18,7 @@ import com.likelion.olion.domain.essay.repository.EssayRepository;
 import com.likelion.olion.domain.reading.entity.ReadingSession;
 import com.likelion.olion.domain.reflection.entity.Reflection;
 import com.likelion.olion.domain.reflection.repository.ReflectionRepository;
+import com.likelion.olion.domain.user.entity.SubscriptionPlan;
 import com.likelion.olion.domain.user.entity.User;
 import com.likelion.olion.domain.user.repository.UserRepository;
 import com.likelion.olion.global.common.exception.BusinessException;
@@ -35,6 +36,8 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -234,11 +237,51 @@ class EssayServiceTest {
         given(essayRepository.findByEssayIdAndUserId(7L, 1L)).willReturn(Optional.of(essay));
         given(essayChapterRepository.findByEssay_EssayIdOrderByChapterNo(7L)).willReturn(List.of());
         given(reflectionRepository.findByEssay_EssayId(7L)).willReturn(List.of());
-        given(essayPdfGenerator.generate(any(EssayDetailResponse.class))).willReturn(pdfBytes);
+        given(essayPdfGenerator.generate(any(EssayDetailResponse.class), anyBoolean())).willReturn(pdfBytes);
 
         byte[] result = service.downloadPdf(1L, 7L);
 
         assertThat(result).isEqualTo(pdfBytes);
+        verify(essayPdfGenerator).generate(any(EssayDetailResponse.class), eq(true));
+    }
+
+    @Test
+    void keepsWatermarkForNonProPlanEvenIfRemovalRequested() {
+        Essay essay = new Essay(1L);
+        essay.startProcessing();
+        essay.complete();
+        ReflectionTestUtils.setField(essay, "essayId", 7L);
+        User user = User.builder().email("basic@test.com").password("encoded").nickname("닉네임").build();
+
+        given(essayRepository.findByEssayIdAndUserId(7L, 1L)).willReturn(Optional.of(essay));
+        given(essayChapterRepository.findByEssay_EssayIdOrderByChapterNo(7L)).willReturn(List.of());
+        given(reflectionRepository.findByEssay_EssayId(7L)).willReturn(List.of());
+        given(userRepository.findById(1L)).willReturn(Optional.of(user));
+        given(essayPdfGenerator.generate(any(EssayDetailResponse.class), anyBoolean())).willReturn(new byte[0]);
+
+        service.downloadPdf(1L, 7L, true);
+
+        verify(essayPdfGenerator).generate(any(EssayDetailResponse.class), eq(true));
+    }
+
+    @Test
+    void removesWatermarkForProPlanWhenRequested() {
+        Essay essay = new Essay(1L);
+        essay.startProcessing();
+        essay.complete();
+        ReflectionTestUtils.setField(essay, "essayId", 7L);
+        User user = User.builder().email("pro@test.com").password("encoded").nickname("닉네임").build();
+        user.changePlan(SubscriptionPlan.PRO);
+
+        given(essayRepository.findByEssayIdAndUserId(7L, 1L)).willReturn(Optional.of(essay));
+        given(essayChapterRepository.findByEssay_EssayIdOrderByChapterNo(7L)).willReturn(List.of());
+        given(reflectionRepository.findByEssay_EssayId(7L)).willReturn(List.of());
+        given(userRepository.findById(1L)).willReturn(Optional.of(user));
+        given(essayPdfGenerator.generate(any(EssayDetailResponse.class), anyBoolean())).willReturn(new byte[0]);
+
+        service.downloadPdf(1L, 7L, true);
+
+        verify(essayPdfGenerator).generate(any(EssayDetailResponse.class), eq(false));
     }
 
     @Test
