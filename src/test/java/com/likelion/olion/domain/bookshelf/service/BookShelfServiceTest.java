@@ -4,12 +4,14 @@ import com.likelion.olion.domain.book.entity.Book;
 import com.likelion.olion.domain.book.repository.BookRepository;
 import com.likelion.olion.domain.bookshelf.dto.BookShelfRequest;
 import com.likelion.olion.domain.bookshelf.dto.BookShelfSaveResponse;
+import com.likelion.olion.domain.bookshelf.dto.BookShelfResponse;
 import com.likelion.olion.domain.bookshelf.entity.BookStatus;
 import com.likelion.olion.domain.bookshelf.entity.UserBook;
 import com.likelion.olion.domain.bookshelf.repository.UserBookRepository;
 import com.likelion.olion.global.common.exception.BusinessException;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -56,5 +58,24 @@ class BookShelfServiceTest {
         assertThatThrownBy(() -> service.changeStatus(1L, 30L, "INVALID"))
                 .isInstanceOf(BusinessException.class)
                 .hasMessage("유효하지 않은 status 값입니다.");
+    }
+
+    @Test
+    void 책장_목록_응답에_출판사_정보가_포함된다() {
+        Book book = mock(Book.class);
+        when(book.getBookId()).thenReturn(5L);
+        when(book.getTitle()).thenReturn("어린 왕자");
+        when(book.getAuthor()).thenReturn("앙투안 드 생텍쥐페리");
+        when(book.getPublisher()).thenReturn("열린책들");
+        UserBook userBook = mock(UserBook.class);
+        when(userBook.getUserBookId()).thenReturn(30L);
+        when(userBook.getBook()).thenReturn(book);
+        when(userBook.getStatus()).thenReturn(BookStatus.BEFORE_READING);
+        when(userBookRepository.findByUserIdOrderByCreatedAtDesc(1L)).thenReturn(List.of(userBook));
+
+        BookShelfResponse response = service.getBookshelf(1L, null);
+
+        assertThat(response.books()).hasSize(1);
+        assertThat(response.books().get(0).book().publisher()).isEqualTo("열린책들");
     }
 }
