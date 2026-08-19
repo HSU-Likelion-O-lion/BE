@@ -37,10 +37,14 @@ public record BookShelfResponse(
             @Schema(description = "저자", example = "앙투안 드 생텍쥐페리")
             String author,
             @Schema(description = "표지 이미지 URL")
-            String coverImageUrl
+            String coverImageUrl,
+            @Schema(description = "출판사", example = "열린책들")
+            String publisher
     ) {
         private static BookSummary from(Book book) {
-            return new BookSummary(book.getBookId(), book.getTitle(), book.getAuthor(), book.getCoverImageUrl());
+            return new BookSummary(
+                    book.getBookId(), book.getTitle(), book.getAuthor(),
+                    book.getCoverImageUrl(), book.getPublisher());
         }
     }
 }
