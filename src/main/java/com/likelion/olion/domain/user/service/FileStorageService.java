@@ -26,6 +26,7 @@ import java.util.UUID;
 public class FileStorageService {
 
     private static final List<String> ALLOWED_TYPES = List.of("image/png", "image/jpeg", "image/webp");
+    private static final String DEFAULT_PROFILE_IMAGE_URL = "/mascot.png";
 
     private final Path uploadDir;
     private final String storageType;
@@ -74,7 +75,7 @@ public class FileStorageService {
 
     public String resolveProfileImageUrl(String storedReference) {
         if (storedReference == null || storedReference.isBlank()) {
-            return null;
+            return DEFAULT_PROFILE_IMAGE_URL;
         }
         if (!storedReference.startsWith("profile/")) {
             return storedReference;
