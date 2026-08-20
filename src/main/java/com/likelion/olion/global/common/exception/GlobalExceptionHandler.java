@@ -2,6 +2,7 @@ package com.likelion.olion.global.common.exception;
 
 import com.likelion.olion.global.common.response.ApiResponse;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -23,8 +24,18 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(errorCode.code(), errorCode.status(), exception.getMessage()));
     }
 
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiResponse<Void>> handleValidationException(MethodArgumentNotValidException exception) {
+        ErrorCode errorCode = ErrorCode.INVALID_INPUT;
+        String message = exception.getBindingResult().getFieldErrors().stream()
+                .findFirst()
+                .map(FieldError::getDefaultMessage)
+                .orElse(errorCode.message());
+        return ResponseEntity.status(errorCode.status())
+                .body(ApiResponse.error(errorCode.code(), errorCode.status(), message));
+    }
+
     @ExceptionHandler({
-            MethodArgumentNotValidException.class,
             MissingServletRequestParameterException.class,
             MethodArgumentTypeMismatchException.class
     })
