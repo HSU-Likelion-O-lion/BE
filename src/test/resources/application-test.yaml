@@ -22,3 +22,7 @@ jwt:
 
 file:
   upload-dir: ./build/test-uploads
+
+reflection-share:
+  storage: local
+  presigned-url-minutes: 10

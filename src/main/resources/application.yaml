@@ -29,3 +29,7 @@ app:
     support-url: http://localhost:5173/support
     terms-url: http://localhost:5173/terms
     privacy-policy-url: http://localhost:5173/privacy
+
+reflection-share:
+  storage: local
+  presigned-url-minutes: 10
