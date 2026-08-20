@@ -33,6 +33,7 @@ public class SecurityConfig {
             "/api/users/check-nickname",
             "/api/public/**",
             "/images/**",
+            "/mascot.png",
             "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html"
     };
 
