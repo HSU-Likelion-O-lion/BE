@@ -1,11 +1,11 @@
 package com.likelion.olion.domain.book.client;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.likelion.olion.domain.book.config.BookApiProperties;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import tools.jackson.databind.JsonNode;
 
 import java.util.ArrayList;
 import java.util.List;
