@@ -24,7 +24,6 @@ public class EssayGenerationWorker {
     private final EssayEditor essayEditor;
     private final AiEssayEditor aiEssayEditor;
 
-    @Autowired
     public EssayGenerationWorker(
             EssayRepository essayRepository,
             EssayChapterRepository essayChapterRepository,
@@ -34,6 +33,7 @@ public class EssayGenerationWorker {
         this(essayRepository, essayChapterRepository, reflectionRepository, essayEditor, null);
     }
 
+    @Autowired
     public EssayGenerationWorker(
             EssayRepository essayRepository,
             EssayChapterRepository essayChapterRepository,
