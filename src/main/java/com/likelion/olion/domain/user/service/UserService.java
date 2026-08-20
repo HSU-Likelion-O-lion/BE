@@ -30,7 +30,8 @@ public class UserService {
     public UserMeResponse getMe(Long userId) {
         User user = getUser(userId);
         return new UserMeResponse(user.getId(), user.getEmail(), user.getNickname(),
-                user.getProfileImageUrl(), user.getPlan(), user.getCreatedAt(), user.getUpdatedAt());
+                fileStorageService.resolveProfileImageUrl(user.getProfileImageUrl()),
+                user.getPlan(), user.getCreatedAt(), user.getUpdatedAt());
     }
 
     @Transactional
@@ -65,7 +66,7 @@ public class UserService {
         User user = getUser(userId);
         String url = fileStorageService.storeProfileImage(userId, image);
         user.changeProfileImageUrl(url);
-        return new ProfileImageResponse(url);
+        return new ProfileImageResponse(fileStorageService.resolveProfileImageUrl(url));
     }
 
     @Transactional(readOnly = true)

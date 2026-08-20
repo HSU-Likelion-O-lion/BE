@@ -13,6 +13,9 @@ RUN ./gradlew clean bootJar -x test --no-daemon
 # 2단계: 빌드된 JAR만 담아서 실행
 FROM eclipse-temurin:21-jre
 WORKDIR /app
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends fonts-noto-cjk \
+    && rm -rf /var/lib/apt/lists/*
 COPY --from=build /app/build/libs/*.jar app.jar
 
 EXPOSE 8080

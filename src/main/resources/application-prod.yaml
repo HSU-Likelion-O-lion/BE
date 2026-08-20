@@ -41,6 +41,17 @@ jwt:
 file:
   upload-dir: ${FILE_UPLOAD_DIR:/app/uploads}
 
+reflection-share:
+  storage: s3
+  presigned-url-minutes: ${AWS_S3_PRESIGNED_URL_MINUTES:10}
+
+aws:
+  s3:
+    access-key: ${AWS_S3_ACCESS_KEY}
+    secret-key: ${AWS_S3_SECRET_KEY}
+    bucket: ${AWS_S3_BUCKET}
+    region: ${AWS_S3_REGION}
+
 # 도서 검색 외부 API (카카오 우선, 실패 시 알라딘, 둘 다 안 되면 내부 DB)
 book:
   api:
