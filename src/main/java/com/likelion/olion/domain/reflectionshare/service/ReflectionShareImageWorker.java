@@ -35,7 +35,7 @@ public class ReflectionShareImageWorker {
     @Transactional
     public void process(Long shareId) {
         ReflectionShare share = reflectionShareRepository.findByIdForUpdate(shareId).orElse(null);
-        if (share == null || share.getStatus() != ReflectionShareStatus.QUEUED) {
+        if (share == null || !isProcessable(share.getStatus())) {
             return;
         }
 
@@ -56,5 +56,10 @@ public class ReflectionShareImageWorker {
                     "Reflection share image generation failed for shareId=" + shareId,
                     exception);
         }
+    }
+
+    private boolean isProcessable(ReflectionShareStatus status) {
+        return status == ReflectionShareStatus.QUEUED
+                || status == ReflectionShareStatus.PROCESSING;
     }
 }
