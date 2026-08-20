@@ -11,6 +11,9 @@ import com.likelion.olion.domain.reflectionshare.entity.ReflectionShareStatus;
 import com.likelion.olion.domain.reflectionshare.entity.ReflectionShareTheme;
 import com.likelion.olion.domain.reflectionshare.event.ReflectionShareCreatedEvent;
 import com.likelion.olion.domain.reflectionshare.repository.ReflectionShareRepository;
+import com.likelion.olion.domain.user.entity.SubscriptionPlan;
+import com.likelion.olion.domain.user.entity.User;
+import com.likelion.olion.domain.user.repository.UserRepository;
 import com.likelion.olion.global.common.exception.BusinessException;
 import com.likelion.olion.global.common.exception.ErrorCode;
 import org.springframework.context.ApplicationEventPublisher;
@@ -21,21 +24,26 @@ import java.util.Arrays;
 
 @Service
 public class ReflectionShareService {
+    private static final Long DEFAULT_THEME_ID = 2L;
+
     private final ReflectionRepository reflectionRepository;
     private final ReflectionShareRepository reflectionShareRepository;
     private final ReflectionShareObjectStorage objectStorage;
     private final ApplicationEventPublisher eventPublisher;
+    private final UserRepository userRepository;
 
     public ReflectionShareService(
             ReflectionRepository reflectionRepository,
             ReflectionShareRepository reflectionShareRepository,
             ReflectionShareObjectStorage objectStorage,
-            ApplicationEventPublisher eventPublisher
+            ApplicationEventPublisher eventPublisher,
+            UserRepository userRepository
     ) {
         this.reflectionRepository = reflectionRepository;
         this.reflectionShareRepository = reflectionShareRepository;
         this.objectStorage = objectStorage;
         this.eventPublisher = eventPublisher;
+        this.userRepository = userRepository;
     }
 
     @Transactional(readOnly = true)
@@ -58,7 +66,8 @@ public class ReflectionShareService {
         Reflection reflection = reflectionRepository.findByReflectionIdAndUserId(reflectionId, userId)
                 .orElseThrow(() -> new BusinessException(
                         ErrorCode.NOT_FOUND, "본인의 사유록을 찾을 수 없습니다."));
-        ReflectionShareTheme theme = ReflectionShareTheme.findById(request.themeId())
+        Long themeId = isProPlan(userId) ? request.themeId() : DEFAULT_THEME_ID;
+        ReflectionShareTheme theme = ReflectionShareTheme.findById(themeId)
                 .orElseThrow(() -> new BusinessException(
                         ErrorCode.INVALID_INPUT, "지원하지 않는 공유 테마입니다."));
 
@@ -77,5 +86,12 @@ public class ReflectionShareService {
                 ? objectStorage.resolveUrl(share.getImageKey())
                 : null;
         return new ReflectionShareStatusResponse(share.getStatus(), imageUrl);
+    }
+
+    private boolean isProPlan(Long userId) {
+        return userRepository.findById(userId)
+                .map(User::getPlan)
+                .map(plan -> plan == SubscriptionPlan.PRO)
+                .orElse(false);
     }
 }
