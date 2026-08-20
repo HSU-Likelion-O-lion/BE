@@ -7,6 +7,9 @@ import com.likelion.olion.domain.reflectionshare.entity.ReflectionShare;
 import com.likelion.olion.domain.reflectionshare.entity.ReflectionShareStatus;
 import com.likelion.olion.domain.reflectionshare.event.ReflectionShareCreatedEvent;
 import com.likelion.olion.domain.reflectionshare.repository.ReflectionShareRepository;
+import com.likelion.olion.domain.user.entity.SubscriptionPlan;
+import com.likelion.olion.domain.user.entity.User;
+import com.likelion.olion.domain.user.repository.UserRepository;
 import com.likelion.olion.global.common.exception.BusinessException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -27,6 +30,7 @@ class ReflectionShareServiceTest {
     private ReflectionShareRepository shareRepository;
     private ReflectionShareObjectStorage objectStorage;
     private ApplicationEventPublisher eventPublisher;
+    private UserRepository userRepository;
     private ReflectionShareService service;
 
     @BeforeEach
@@ -35,13 +39,17 @@ class ReflectionShareServiceTest {
         shareRepository = mock(ReflectionShareRepository.class);
         objectStorage = mock(ReflectionShareObjectStorage.class);
         eventPublisher = mock(ApplicationEventPublisher.class);
+        userRepository = mock(UserRepository.class);
         service = new ReflectionShareService(
-                reflectionRepository, shareRepository, objectStorage, eventPublisher);
+                reflectionRepository, shareRepository, objectStorage, eventPublisher, userRepository);
     }
 
     @Test
     void createsShareForOwnedReflection() {
         Reflection reflection = mock(Reflection.class);
+        User proUser = mock(User.class);
+        given(proUser.getPlan()).willReturn(SubscriptionPlan.PRO);
+        given(userRepository.findById(1L)).willReturn(Optional.of(proUser));
         given(reflectionRepository.findByReflectionIdAndUserId(88L, 1L))
                 .willReturn(Optional.of(reflection));
         given(shareRepository.saveAndFlush(any(ReflectionShare.class)))
@@ -51,7 +59,7 @@ class ReflectionShareServiceTest {
                     return share;
                 });
 
-        var response = service.create(1L, 88L, new ReflectionShareCreateRequest(2L));
+        var response = service.create(1L, 88L, new ReflectionShareCreateRequest(3L));
 
         assertThat(response.shareId()).isEqualTo(30L);
         assertThat(response.status()).isEqualTo(ReflectionShareStatus.QUEUED);
@@ -59,7 +67,10 @@ class ReflectionShareServiceTest {
     }
 
     @Test
-    void rejectsUnknownTheme() {
+    void rejectsUnknownThemeForProUser() {
+        User proUser = mock(User.class);
+        given(proUser.getPlan()).willReturn(SubscriptionPlan.PRO);
+        given(userRepository.findById(1L)).willReturn(Optional.of(proUser));
         given(reflectionRepository.findByReflectionIdAndUserId(88L, 1L))
                 .willReturn(Optional.of(mock(Reflection.class)));
 
@@ -67,6 +78,24 @@ class ReflectionShareServiceTest {
                 1L, 88L, new ReflectionShareCreateRequest(99L)))
                 .isInstanceOf(BusinessException.class)
                 .hasMessage("지원하지 않는 공유 테마입니다.");
+    }
+
+    @Test
+    void forcesDefaultThemeForNonProUser() {
+        Reflection reflection = mock(Reflection.class);
+        User basicUser = mock(User.class);
+        given(basicUser.getPlan()).willReturn(SubscriptionPlan.BASIC);
+        given(userRepository.findById(1L)).willReturn(Optional.of(basicUser));
+        given(reflectionRepository.findByReflectionIdAndUserId(88L, 1L))
+                .willReturn(Optional.of(reflection));
+        given(shareRepository.saveAndFlush(any(ReflectionShare.class)))
+                .willAnswer(invocation -> invocation.getArgument(0));
+
+        service.create(1L, 88L, new ReflectionShareCreateRequest(4L));
+
+        var captor = org.mockito.ArgumentCaptor.forClass(ReflectionShare.class);
+        verify(shareRepository).saveAndFlush(captor.capture());
+        assertThat(captor.getValue().getThemeId()).isEqualTo(2L);
     }
 
     @Test
