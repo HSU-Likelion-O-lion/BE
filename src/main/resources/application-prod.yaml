@@ -44,6 +44,9 @@ file:
 reflection-share:
   storage: s3
   presigned-url-minutes: ${AWS_S3_PRESIGNED_URL_MINUTES:10}
+  recovery-stale-seconds: ${REFLECTION_SHARE_RECOVERY_STALE_SECONDS:120}
+  recovery-initial-delay-ms: ${REFLECTION_SHARE_RECOVERY_INITIAL_DELAY_MS:30000}
+  recovery-interval-ms: ${REFLECTION_SHARE_RECOVERY_INTERVAL_MS:60000}
 
 aws:
   s3:

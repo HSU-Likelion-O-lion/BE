@@ -67,9 +67,10 @@ public class ReflectionShareController {
             case FAILED -> "사유록 공유 이미지 생성에 실패했습니다.";
             case QUEUED, PROCESSING -> "사유록 공유 이미지를 생성하고 있습니다.";
         };
-        String code = response.status() == ReflectionShareStatus.COMPLETED
-                ? "SUCCESS"
-                : "SUCCESS_PROCESSING";
+        String code = switch (response.status()) {
+            case COMPLETED, FAILED -> "SUCCESS";
+            case QUEUED, PROCESSING -> "SUCCESS_PROCESSING";
+        };
         return ResponseEntity.ok(ApiResponse.success(code, HttpStatus.OK, message, response));
     }
 }

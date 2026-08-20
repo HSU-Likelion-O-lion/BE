@@ -33,3 +33,6 @@ app:
 reflection-share:
   storage: local
   presigned-url-minutes: 10
+  recovery-stale-seconds: 120
+  recovery-initial-delay-ms: 30000
+  recovery-interval-ms: 60000
